@@ -1,4 +1,4 @@
-function CourseCard() {
+function CourseCard(props) { 
   return (
     <div>
       <h2>Python for Beginners</h2>

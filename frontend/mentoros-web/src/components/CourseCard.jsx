@@ -1,11 +1,23 @@
-function CourseCard(props) { 
+import "../styles/CourseCard.css";
+function CourseCard({
+  title,
+  duration,
+  level,
+  students,
+  rating
+}) {
   return (
-    <div>
-      <h2>Python for Beginners</h2>
+    <div className="course-card">
+      <h2>{title}</h2>
 
-      <p>Duration: 30 Days</p>
+      <p>Duration: {duration}</p>
+      <p>⭐ {rating}</p>
 
-      <button>Enroll</button>
+<p>👨‍🎓 {students}</p>
+
+<p>📚 {level}</p>
+
+      <button>Enroll Now</button>
     </div>
   );
 }

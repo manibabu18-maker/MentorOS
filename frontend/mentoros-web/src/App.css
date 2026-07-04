@@ -128,8 +128,26 @@ body {
   margin-bottom: 0 !important;
 }
 
-.signup-text span {
+.signup-text a {
   color: royalblue;
   font-weight: 600;
+  text-decoration: none;
   cursor: pointer;
+}
+
+.signup-text a:hover {
+  text-decoration: underline;
+}
+.success-message {
+  color: green !important;
+  text-align: center;
+  margin-top: 15px;
+  font-weight: 600;
+}
+
+.error-message {
+  color: red !important;
+  text-align: center;
+  margin-top: 15px;
+  font-weight: 600;
 }

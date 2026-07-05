@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
- const handleSubmit = (event) => {
+  const navigate = useNavigate();
+ const handleSubmit = async (event) => {
   event.preventDefault();
 
   if (email === "" || password === "") {
@@ -15,7 +17,19 @@ function Login() {
   } else if (password.length < 6) {
     setMessage("Password must be at least 6 characters");
   } else {
-    setMessage("Login successful");
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setMessage("Login successful");
+      console.log(data);
+
+      navigate("/dashboard");
+    }
   }
 };
 

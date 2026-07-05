@@ -7,7 +7,8 @@ import Signup from "./pages/Signup";
 import "./App.css";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-
+import Dashboard from "./pages/Dashboard";
+import Onboarding from "./pages/Onboarding";
 function App() {
   return (
     <>
@@ -19,6 +20,8 @@ function App() {
         <Route path="/about" element={<About />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/onboarding" element={<Onboarding />} />
       </Routes>
 
       <Footer />

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { generateLearningPath } from "../utils/generateLearningPath";
 function Onboarding() {
   const [subject, setSubject] = useState("");
   const [level, setLevel] = useState("");
@@ -11,30 +12,68 @@ function Onboarding() {
   const handleOnboarding = async (event) => {
   event.preventDefault();
 
+  if (
+    subject === "" ||
+    level === "" ||
+    learningPreference === "" ||
+    dailyTime === "" ||
+    goal === ""
+  ) {
+    alert("Please fill all fields");
+    return;
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { error } = await supabase
-    .from("student_profiles")
-    .insert([
-      {
-        user_id: user.id,
-        subject: subject,
-        level: level,
-        learning_preference: learningPreference,
-        daily_time: dailyTime,
-        goal: goal,
-      },
-    ]);
-
-  if (error) {
-    console.log(error);
-    alert(error.message);
-  } else {
-    alert("Profile saved successfully!");
-    navigate("/dashboard");
+  if (!user) {
+    navigate("/login");
+    return;
   }
+
+  const profileData = {
+    user_id: user.id,
+    subject: subject,
+    level: level,
+    learning_preference: learningPreference,
+    daily_time: dailyTime,
+    goal: goal,
+  };
+
+  const { error: profileError } = await supabase
+    .from("student_profiles")
+    .insert([profileData]);
+
+  if (profileError) {
+    console.log(profileError);
+    alert(profileError.message);
+    return;
+  }
+
+  const learningPath = generateLearningPath(profileData);
+
+  const learningPathData = learningPath.map((day) => ({
+    user_id: user.id,
+    day_number: day.day_number,
+    topic: day.topic,
+    description: day.description,
+    status: day.status,
+  }));
+
+  const { error: learningPathError } = await supabase
+    .from("learning_paths")
+    .insert(learningPathData);
+
+  if (learningPathError) {
+    console.log(learningPathError);
+    alert(learningPathError.message);
+    return;
+  }
+
+  alert("Your personalized learning path is ready!");
+
+  navigate("/dashboard");
 };
 
   return (

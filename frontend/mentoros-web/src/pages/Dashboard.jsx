@@ -132,7 +132,12 @@ setLoading(false);
         <h3>{day.topic}</h3>
 
         <p>{day.description}</p>
-
+         <button
+  className="start-learning-button"
+  onClick={() => navigate(`/lesson/${day.id}`)}
+>
+  Start Learning
+</button>
         <span className="learning-status">
           {day.status}
         </span>

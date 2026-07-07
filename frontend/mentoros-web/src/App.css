@@ -298,3 +298,52 @@ body {
   font-weight: 600;
   font-size: 14px;
 }
+.start-learning-button {
+  display: block;
+  margin-top: 15px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #0f172a;
+  color: white;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.start-learning-button:hover {
+  background: #334155;
+}
+
+.lesson-page {
+  min-height: 70vh;
+  padding: 60px 20px;
+  background: #f8fafc;
+}
+
+.lesson-card {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+.lesson-card h1 {
+  color: #1e293b;
+  margin: 15px 0;
+}
+
+.lesson-card p {
+  color: #64748b;
+  font-size: 18px;
+  line-height: 1.7;
+}
+.learning-preference-box {
+  margin: 25px 0;
+  padding: 15px;
+  background: #eff6ff;
+  border-radius: 10px;
+  color: #1e40af;
+  font-weight: 500;
+}

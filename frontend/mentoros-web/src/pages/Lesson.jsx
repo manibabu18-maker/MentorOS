@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import { generateLessonContent } from "../utils/generateLessonContent";
+
+import {
+  getSavedLesson,
+  saveLesson,
+  generateAILesson,
+  generateFallbackLesson,
+} from "../services/lessonService";
 
 function Lesson() {
   const [lesson, setLesson] = useState(null);
@@ -24,28 +30,30 @@ function Lesson() {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data: lessonData, error: lessonError } = await supabase
         .from("learning_paths")
         .select("*")
         .eq("id", dayId)
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (error) {
-        console.log(error);
+      if (lessonError) {
+        console.log(lessonError);
       }
 
-      if (!data) {
+      if (!lessonData) {
         navigate("/dashboard");
         return;
       }
 
-      const { data: profileData, error: profileError } =
-        await supabase
-          .from("student_profiles")
-          .select("*")
-          .eq("user_id", user.id)
-          .maybeSingle();
+      const {
+        data: profileData,
+        error: profileError,
+      } = await supabase
+        .from("student_profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
       if (profileError) {
         console.log(profileError);
@@ -56,147 +64,96 @@ function Lesson() {
         return;
       }
 
+      setLesson(lessonData);
       setProfile(profileData);
-      setLesson(data);
       setLoading(false);
     };
 
     loadLesson();
   }, [dayId, navigate]);
-
-  const handleGenerateLesson = async () => {
+    const handleGenerateLesson = async () => {
     setAiLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "generate-lesson",
-        {
-          body: {
-            subject: profile.subject,
-            level: profile.level,
-            learningPreference: profile.learning_preference,
-            dailyTime: profile.daily_time,
-            careerGoal: profile.goal,
-            lessonTopic: lesson.topic,
-          },
-        }
-      );
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      if (!error && !data?.error && data?.lesson) {
-        setAiLesson(data.lesson);
+      if (!user) {
+        navigate("/login");
         return;
       }
 
-      console.log(
-        "Live AI unavailable. Using MentorOS lesson engine."
+      // Step 1: Check if lesson already exists in database
+      const savedLesson = await getSavedLesson(
+        user.id,
+        lesson.id
       );
 
-      const fallbackSections = generateLessonContent(
-        lesson,
-        profile
+      if (savedLesson) {
+        console.log("Lesson loaded from database.");
+        setAiLesson(savedLesson);
+        return;
+      }
+
+      // Step 2: Generate AI lesson using Groq
+      const generatedLesson = await generateAILesson(
+        profile,
+        lesson
       );
 
-      const fallbackLesson = {
-        title: lesson.topic,
+      if (generatedLesson) {
+        await saveLesson(
+          user.id,
+          lesson.id,
+          generatedLesson
+        );
 
-        simpleExplanation:
-          fallbackSections.find(
-            (section) => section.type === "explanation"
-          )?.content || lesson.description,
+        setAiLesson(generatedLesson);
+        return;
+      }
 
-        keyPoints: [
-          `Understand the fundamentals of ${lesson.topic}.`,
-          `Connect ${lesson.topic} with ${profile.subject}.`,
-          `Apply the concept toward your goal: ${profile.goal}.`,
-        ],
+      // Step 3: Use local fallback lesson
+      const fallbackLesson =
+        generateFallbackLesson(
+          lesson,
+          profile
+        );
 
-        visualExplanation:
-          fallbackSections.find(
-            (section) => section.type === "visual"
-          )?.content ||
-          `Visualize the input, processing, and output flow of ${lesson.topic}.`,
-
-        practicalExample:
-          fallbackSections.find(
-            (section) => section.type === "practical"
-          )?.content ||
-          `Observe how ${lesson.topic} is applied in a real engineering system.`,
-
-        practiceTask:
-          fallbackSections.find(
-            (section) => section.type === "practice"
-          )?.content ||
-          `Write three important points about ${lesson.topic}.`,
-
-        quiz: [
-          {
-            question: `Why is ${lesson.topic} important in ${profile.subject}?`,
-            answer: `It helps build the fundamental knowledge required to understand and apply ${profile.subject} concepts.`,
-          },
-        ],
-      };
+      await saveLesson(
+        user.id,
+        lesson.id,
+        fallbackLesson
+      );
 
       setAiLesson(fallbackLesson);
-    } catch (error) {
-      console.log(error);
 
-      const fallbackSections = generateLessonContent(
-        lesson,
-        profile
+    } catch (error) {
+      console.error(
+        "Lesson Generation Error:",
+        error
       );
 
-      setAiLesson({
-        title: lesson.topic,
+      const emergencyLesson =
+        generateFallbackLesson(
+          lesson,
+          profile
+        );
 
-        simpleExplanation:
-          fallbackSections.find(
-            (section) => section.type === "explanation"
-          )?.content || lesson.description,
+      setAiLesson(emergencyLesson);
 
-        keyPoints: [
-          `Learn the core concepts of ${lesson.topic}.`,
-          `Understand its role in ${profile.subject}.`,
-          `Practice the concept with a simple engineering example.`,
-        ],
-
-        visualExplanation:
-          fallbackSections.find(
-            (section) => section.type === "visual"
-          )?.content ||
-          `Create a simple flow diagram for ${lesson.topic}.`,
-
-        practicalExample:
-          fallbackSections.find(
-            (section) => section.type === "practical"
-          )?.content ||
-          `Identify a practical application of ${lesson.topic}.`,
-
-        practiceTask:
-          fallbackSections.find(
-            (section) => section.type === "practice"
-          )?.content ||
-          `Write three key points about ${lesson.topic}.`,
-
-        quiz: [
-          {
-            question: `What did you understand about ${lesson.topic}?`,
-            answer:
-              "Explain the core concept using your own words.",
-          },
-        ],
-      });
     } finally {
       setAiLoading(false);
     }
   };
-
-  if (loading) {
+    if (loading) {
     return <h2>Loading Lesson...</h2>;
   }
 
   return (
     <section className="lesson-page">
       <div className="lesson-card">
+
         <span>Day {lesson.day_number}</span>
 
         <h1>{lesson.topic}</h1>
@@ -222,12 +179,13 @@ function Lesson() {
 
         {aiLesson && (
           <div className="ai-lesson-content">
+
             <h2>{aiLesson.title}</h2>
 
-            <h3>Simple Explanation</h3>
+            <h3>📖 Concept</h3>
             <p>{aiLesson.simpleExplanation}</p>
 
-            <h3>Key Points</h3>
+            <h3>🔑 Key Points</h3>
 
             <ul>
               {aiLesson.keyPoints?.map((point, index) => (
@@ -235,19 +193,22 @@ function Lesson() {
               ))}
             </ul>
 
-            <h3>Visual Explanation</h3>
+            <h3>🖼 Visual Explanation</h3>
             <p>{aiLesson.visualExplanation}</p>
 
-            <h3>Practical Example</h3>
+            <h3>⚙ Practical Example</h3>
             <p>{aiLesson.practicalExample}</p>
 
-            <h3>Practice Task</h3>
+            <h3>💻 Practice Task</h3>
             <p>{aiLesson.practiceTask}</p>
 
-            <h3>Quick Quiz</h3>
+            <h3>🧠 Quick Quiz</h3>
 
             {aiLesson.quiz?.map((item, index) => (
-              <div key={index}>
+              <div
+                key={index}
+                className="quiz-item"
+              >
                 <p>
                   <strong>Question:</strong>{" "}
                   {item.question}
@@ -259,12 +220,28 @@ function Lesson() {
                 </p>
               </div>
             ))}
+
+            {/* Future Features */}
+
+            <hr />
+
+            <h3>🚀 Coming Soon</h3>
+
+            <ul>
+              <li>🤖 Ask MentorOS AI</li>
+              <li>🎥 Recommended Videos</li>
+              <li>📚 Further Reading</li>
+              <li>📝 Interview Questions</li>
+              <li>📄 Download Notes (PDF)</li>
+            </ul>
+
           </div>
         )}
 
         <button onClick={() => navigate("/dashboard")}>
           Back to Dashboard
         </button>
+
       </div>
     </section>
   );

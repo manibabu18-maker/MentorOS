@@ -8,13 +8,20 @@ import {
   generateAILesson,
   generateFallbackLesson,
 } from "../services/lessonService";
-
+import {
+  getChatHistory,
+  saveChat,
+  askMentor,
+} from "../services/chatService";
 function Lesson() {
   const [lesson, setLesson] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [aiLesson, setAiLesson] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [chatHistory, setChatHistory] = useState([]);
+const [question, setQuestion] = useState("");
+const [chatLoading, setChatLoading] = useState(false);
 
   const navigate = useNavigate();
   const { dayId } = useParams();
@@ -65,8 +72,16 @@ function Lesson() {
       }
 
       setLesson(lessonData);
-      setProfile(profileData);
-      setLoading(false);
+setProfile(profileData);
+
+const chats = await getChatHistory(
+  user.id,
+  lessonData.id
+);
+
+setChatHistory(chats);
+
+setLoading(false);
     };
 
     loadLesson();
@@ -146,6 +161,52 @@ function Lesson() {
       setAiLoading(false);
     }
   };
+const handleAskMentor = async () => {
+  if (!question.trim()) return;
+
+  setChatLoading(true);
+
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const answer = await askMentor(
+      profile,
+      lesson,
+      question
+    );
+
+    if (!answer) {
+      alert("AI failed to answer.");
+      return;
+    }
+
+    await saveChat(
+      user.id,
+      lesson.id,
+      question,
+      answer
+    );
+
+    setChatHistory((prev) => [
+      ...prev,
+      {
+        question,
+        answer,
+      },
+    ]);
+
+    setQuestion("");
+
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setChatLoading(false);
+  }
+};
     if (loading) {
     return <h2>Loading Lesson...</h2>;
   }
@@ -225,15 +286,61 @@ function Lesson() {
 
             <hr />
 
-            <h3>🚀 Coming Soon</h3>
+<h3>🤖 Ask MentorOS AI</h3>
 
-            <ul>
-              <li>🤖 Ask MentorOS AI</li>
-              <li>🎥 Recommended Videos</li>
-              <li>📚 Further Reading</li>
-              <li>📝 Interview Questions</li>
-              <li>📄 Download Notes (PDF)</li>
-            </ul>
+<textarea
+  rows="4"
+  placeholder="Ask anything about this lesson..."
+  value={question}
+  onChange={(e) => setQuestion(e.target.value)}
+  style={{
+    width: "100%",
+    padding: "12px",
+    borderRadius: "8px",
+    marginTop: "10px",
+  }}
+/>
+
+<button
+  onClick={handleAskMentor}
+  disabled={chatLoading}
+  style={{ marginTop: "10px" }}
+>
+  {chatLoading
+    ? "Thinking..."
+    : "Ask MentorOS"}
+</button>
+{chatHistory.length > 0 && (
+  <>
+    <hr />
+
+    <h3>💬 Chat History</h3>
+
+    {chatHistory.map((chat, index) => (
+      <div
+        key={index}
+        style={{
+          border: "1px solid #ddd",
+          padding: "15px",
+          borderRadius: "10px",
+          marginBottom: "15px",
+        }}
+      >
+        <p>
+          <strong>👤 You:</strong>
+        </p>
+
+        <p>{chat.question}</p>
+
+        <p>
+          <strong>🤖 MentorOS:</strong>
+        </p>
+
+        <p>{chat.answer}</p>
+      </div>
+    ))}
+  </>
+)}
 
           </div>
         )}

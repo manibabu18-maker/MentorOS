@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-
 import {
   getSavedLesson,
   saveLesson,
@@ -22,6 +21,7 @@ function Lesson() {
   const [chatHistory, setChatHistory] = useState([]);
 const [question, setQuestion] = useState("");
 const [chatLoading, setChatLoading] = useState(false);
+const chatEndRef = useRef(null);
 
   const navigate = useNavigate();
   const { dayId } = useParams();
@@ -200,6 +200,11 @@ const handleAskMentor = async () => {
     ]);
 
     setQuestion("");
+    setTimeout(() => {
+  chatEndRef.current?.scrollIntoView({
+    behavior: "smooth",
+  });
+}, 100);
 
   } catch (error) {
     console.error(error);
@@ -287,7 +292,45 @@ const handleAskMentor = async () => {
             <hr />
 
 <h3>🤖 Ask MentorOS AI</h3>
+<div className="quick-actions">
 
+  <button
+    onClick={() => setQuestion("Explain today's lesson in Telugu.")}
+  >
+    🇮🇳 Telugu
+  </button>
+
+  <button
+    onClick={() => setQuestion("Explain this lesson in very simple language.")}
+  >
+    📖 Simple
+  </button>
+
+  <button
+    onClick={() => setQuestion("Generate 10 interview questions with answers for this lesson.")}
+  >
+    💼 Interview
+  </button>
+
+  <button
+    onClick={() => setQuestion("Give one real industry example related to this lesson.")}
+  >
+    ⚙ Industry
+  </button>
+
+  <button
+    onClick={() => setQuestion("Create a short quiz from this lesson.")}
+  >
+    🧠 Quiz
+  </button>
+
+  <button
+    onClick={() => setQuestion("Summarize this lesson into important points.")}
+  >
+    📚 Summary
+  </button>
+
+</div>
 <textarea
   rows="4"
   placeholder="Ask anything about this lesson..."
@@ -307,8 +350,8 @@ const handleAskMentor = async () => {
   style={{ marginTop: "10px" }}
 >
   {chatLoading
-    ? "Thinking..."
-    : "Ask MentorOS"}
+  ? "🤖 MentorOS is thinking..."
+  : "Ask MentorOS"}
 </button>
 {chatHistory.length > 0 && (
   <>
@@ -317,30 +360,23 @@ const handleAskMentor = async () => {
     <h3>💬 Chat History</h3>
 
     {chatHistory.map((chat, index) => (
-      <div
-        key={index}
-        style={{
-          border: "1px solid #ddd",
-          padding: "15px",
-          borderRadius: "10px",
-          marginBottom: "15px",
-        }}
-      >
-        <p>
-          <strong>👤 You:</strong>
-        </p>
+<div key={index}>
 
-        <p>{chat.question}</p>
+  <div className="chat-message user-message">
+    <div className="chat-title">👤 You</div>
+    <div>{chat.question}</div>
+  </div>
 
-        <p>
-          <strong>🤖 MentorOS:</strong>
-        </p>
+  <div className="chat-message ai-message">
+    <div className="chat-title">🤖 MentorOS AI</div>
+    <div className="chat-answer">{chat.answer}</div>
+  </div>
 
-        <p>{chat.answer}</p>
-      </div>
+</div>
     ))}
   </>
 )}
+<div ref={chatEndRef}></div>
 
           </div>
         )}

@@ -109,3 +109,58 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.quick-actions button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: 0.3s;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.quick-actions button:hover {
+  background: #1d4ed8;
+  transform: translateY(-2px);
+}
+.chat-message {
+  border-radius: 12px;
+  padding: 15px;
+  margin: 15px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.user-message {
+  background: #e0f2fe;
+  border-left: 5px solid #0284c7;
+}
+
+.ai-message {
+  background: #f5f3ff;
+  border-left: 5px solid #7c3aed;
+}
+
+.chat-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.chat-answer {
+  margin-top: 8px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+.generate-lesson-button:disabled,
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

@@ -1,0 +1,87 @@
+export const vlsiRoadmap = [
+  {
+    module: "Module 1",
+    title: "Digital Electronics",
+    topics: [
+      "Number Systems",
+      "Boolean Algebra",
+      "Logic Gates",
+      "Combinational Circuits",
+      "Sequential Circuits",
+      "Flip-Flops",
+      "Counters",
+      "Registers",
+    ],
+  },
+
+  {
+    module: "Module 2",
+    title: "CMOS Fundamentals",
+    topics: [
+      "MOSFET Basics",
+      "CMOS Inverter",
+      "CMOS Logic",
+      "Propagation Delay",
+      "Power Dissipation",
+    ],
+  },
+
+  {
+    module: "Module 3",
+    title: "Hardware Description Language",
+    topics: [
+      "Verilog Basics",
+      "Behavioral Modeling",
+      "Dataflow Modeling",
+      "Structural Modeling",
+      "Testbench",
+      "Simulation",
+    ],
+  },
+{
+  module: "Module 4",
+  title: "RTL Design",
+  topics: [
+    "RTL Design Flow",
+    "Finite State Machines (FSM)",
+    "Synchronous vs Asynchronous Design",
+    "Blocking vs Non-Blocking Assignments",
+    "Parameterized Modules",
+    "Verilog Coding Guidelines",
+    "Lint Checking",
+  ],
+},
+
+{
+  module: "Module 5",
+  title: "Logic Synthesis",
+  topics: [
+    "Synthesis Flow",
+    "Technology Libraries",
+    "Timing Constraints",
+    "SDC Basics",
+    "Gate-Level Netlist",
+    "Optimization Techniques",
+  ],
+},
+{
+  module: "Module 6",
+  title: "Physical Design",
+  topics: [
+    "Introduction to Physical Design",
+    "Physical Design Flow",
+    "Floorplanning",
+    "Power Planning",
+    "Macro Placement",
+    "Standard Cell Placement",
+    "Clock Tree Synthesis (CTS)",
+    "Routing",
+    "Static Timing Analysis (STA)",
+    "Physical Verification (DRC/LVS)",
+    "IR Drop Analysis",
+    "Electromigration (EM)",
+    "Engineering Change Order (ECO)",
+    "Signoff",
+    "Tapeout",
+  ],
+},

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import CourseCard from "../components/CourseCard";
-
+import { useNavigate } from "react-router-dom";
 function Courses() {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
 
   useEffect(() => {
@@ -29,14 +30,19 @@ console.log("Courses component rendered");
       <div className="courses">
         {/* Hardcoded cards for now */}
        {courses.map((course) => (
-  <CourseCard
+  <div
     key={course.id}
-    title={course.roadmap_name}
-    duration={course.estimated_duration}
-    level={course.level}
-    rating="4.9"
-    students="100+"
-  />
+    onClick={() => navigate(`/modules/${course.id}`)}
+    style={{ cursor: "pointer" }}
+  >
+    <CourseCard
+      title={course.roadmap_name}
+      duration={course.estimated_duration}
+      level={course.level}
+      rating="4.9"
+      students="100+"
+    />
+  </div>
 ))}
       </div>
     </section>

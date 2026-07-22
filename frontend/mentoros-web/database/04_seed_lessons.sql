@@ -78,3 +78,50 @@ VALUES
 
 ON CONFLICT (module_id, lesson_order)
 DO NOTHING;
+-- ==========================================
+-- Module 3 : Microcontrollers
+-- ==========================================
+
+INSERT INTO lessons
+(
+    module_id,
+    lesson_order,
+    lesson_title,
+    difficulty,
+    estimated_duration,
+    content
+)
+VALUES
+
+(3,1,'8051 Architecture','Beginner','45 min',
+'Introduction to the 8051 microcontroller, CPU architecture and pin configuration.'),
+
+(3,2,'ARM Cortex-M Overview','Beginner','45 min',
+'Overview of ARM Cortex-M processors and STM32 family.'),
+
+(3,3,'STM32 Basics','Intermediate','60 min',
+'STM32 development boards, IDE setup and first program.'),
+
+(3,4,'Clock System','Intermediate','45 min',
+'Internal clock, external crystal and PLL configuration.'),
+
+(3,5,'Memory Organization','Intermediate','45 min',
+'Flash memory, SRAM, EEPROM concepts and memory map.'),
+
+(3,6,'GPIO Basics','Beginner','45 min',
+'GPIO ports, registers and digital input/output.'),
+
+(3,7,'GPIO Input','Intermediate','45 min',
+'Reading push buttons, switches and digital inputs.'),
+
+(3,8,'GPIO Output','Intermediate','45 min',
+'Controlling LEDs, relays and digital outputs.'),
+
+(3,9,'Interrupt Controller (NVIC)','Advanced','60 min',
+'Nested Vector Interrupt Controller configuration and interrupt handling.'),
+
+(3,10,'Embedded Development Tools','Intermediate','60 min',
+'STM32CubeIDE, Keil uVision, debugging and flashing firmware.')
+
+ON CONFLICT (module_id, lesson_order)
+DO NOTHING;

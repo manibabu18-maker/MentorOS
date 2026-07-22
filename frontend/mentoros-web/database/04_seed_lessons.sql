@@ -207,3 +207,44 @@ VALUES
 
 ON CONFLICT (module_id, lesson_order)
 DO NOTHING;
+-- ==========================================
+-- Module 6 : SPI Communication
+-- ==========================================
+
+INSERT INTO lessons
+(
+    module_id,
+    lesson_order,
+    lesson_title,
+    difficulty,
+    estimated_duration,
+    content
+)
+VALUES
+
+(6,1,'Introduction to SPI','Beginner','30 min',
+'Overview of Serial Peripheral Interface (SPI), applications and advantages.'),
+
+(6,2,'SPI Architecture','Beginner','45 min',
+'Master, Slave, MOSI, MISO, SCLK and SS signals.'),
+
+(6,3,'SPI Communication Modes','Intermediate','45 min',
+'Clock polarity (CPOL), clock phase (CPHA) and SPI modes.'),
+
+(6,4,'SPI Registers','Intermediate','50 min',
+'SPI control, status and data registers.'),
+
+(6,5,'SPI Data Transmission','Intermediate','50 min',
+'Transmitting and receiving data between master and slave devices.'),
+
+(6,6,'SPI with Sensors','Intermediate','60 min',
+'Interfacing SPI sensors like accelerometers and flash memory.'),
+
+(6,7,'SPI Debugging','Advanced','60 min',
+'Debugging SPI communication using logic analyzer and oscilloscope.'),
+
+(6,8,'SPI Best Practices','Advanced','45 min',
+'Bus speed selection, signal integrity and PCB routing guidelines.')
+
+ON CONFLICT (module_id, lesson_order)
+DO NOTHING;

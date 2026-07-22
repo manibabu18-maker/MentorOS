@@ -166,3 +166,44 @@ VALUES
 
 ON CONFLICT (module_id, lesson_order)
 DO NOTHING;
+-- ==========================================
+-- Module 5 : UART Communication
+-- ==========================================
+
+INSERT INTO lessons
+(
+    module_id,
+    lesson_order,
+    lesson_title,
+    difficulty,
+    estimated_duration,
+    content
+)
+VALUES
+
+(5,1,'Introduction to UART','Beginner','30 min',
+'Overview of UART communication, applications and advantages.'),
+
+(5,2,'UART Frame Format','Beginner','45 min',
+'Start bit, data bits, parity bit and stop bit explained.'),
+
+(5,3,'Baud Rate','Intermediate','45 min',
+'Understanding baud rate calculation and synchronization.'),
+
+(5,4,'UART Registers','Intermediate','50 min',
+'Transmit, receive and control registers in UART peripherals.'),
+
+(5,5,'UART Transmission','Intermediate','50 min',
+'Sending data between two devices using UART.'),
+
+(5,6,'UART Reception','Intermediate','50 min',
+'Receiving data and handling receive buffers.'),
+
+(5,7,'UART Interrupts','Advanced','60 min',
+'Using interrupts for efficient UART communication.'),
+
+(5,8,'UART Debugging','Advanced','60 min',
+'Debugging UART communication using serial monitor and logic analyzer.')
+
+ON CONFLICT (module_id, lesson_order)
+DO NOTHING;

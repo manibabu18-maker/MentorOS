@@ -248,3 +248,44 @@ VALUES
 
 ON CONFLICT (module_id, lesson_order)
 DO NOTHING;
+-- ==========================================
+-- Module 7 : I2C Communication
+-- ==========================================
+
+INSERT INTO lessons
+(
+    module_id,
+    lesson_order,
+    lesson_title,
+    difficulty,
+    estimated_duration,
+    content
+)
+VALUES
+
+(7,1,'Introduction to I2C','Beginner','30 min',
+'Overview of Inter-Integrated Circuit (I2C), applications and advantages.'),
+
+(7,2,'I2C Architecture','Beginner','45 min',
+'Master, Slave, SDA, SCL and pull-up resistors.'),
+
+(7,3,'I2C Addressing','Intermediate','45 min',
+'7-bit and 10-bit addressing, device selection and acknowledgements.'),
+
+(7,4,'I2C Communication Sequence','Intermediate','50 min',
+'START, STOP, ACK, NACK and repeated START conditions.'),
+
+(7,5,'I2C Registers','Intermediate','50 min',
+'I2C control, status, address and data registers.'),
+
+(7,6,'I2C Sensor Interfacing','Intermediate','60 min',
+'Interfacing EEPROMs, RTCs and temperature sensors using I2C.'),
+
+(7,7,'I2C Debugging','Advanced','60 min',
+'Debugging I2C communication using logic analyzer and troubleshooting techniques.'),
+
+(7,8,'I2C Best Practices','Advanced','45 min',
+'Bus speed selection, pull-up resistor calculation and PCB routing guidelines.')
+
+ON CONFLICT (module_id, lesson_order)
+DO NOTHING;

@@ -289,3 +289,44 @@ VALUES
 
 ON CONFLICT (module_id, lesson_order)
 DO NOTHING;
+-- ==========================================
+-- Module 8 : Sensors & Actuators
+-- ==========================================
+
+INSERT INTO lessons
+(
+    module_id,
+    lesson_order,
+    lesson_title,
+    difficulty,
+    estimated_duration,
+    content
+)
+VALUES
+
+(8,1,'Introduction to Sensors','Beginner','30 min',
+'Overview of sensors, classifications and embedded system applications.'),
+
+(8,2,'Temperature & Humidity Sensors','Beginner','45 min',
+'Working principle of LM35, DHT11 and DHT22 sensors.'),
+
+(8,3,'Ultrasonic Sensor','Intermediate','45 min',
+'Distance measurement using HC-SR04 ultrasonic sensor.'),
+
+(8,4,'IR & PIR Sensors','Intermediate','45 min',
+'Object detection using IR sensors and motion detection using PIR sensors.'),
+
+(8,5,'Relay Module','Intermediate','45 min',
+'Controlling AC and DC loads using relay modules.'),
+
+(8,6,'Servo & DC Motors','Intermediate','60 min',
+'Servo motor positioning and DC motor speed control techniques.'),
+
+(8,7,'Sensor Interfacing Project','Advanced','60 min',
+'Building a complete sensor monitoring system using multiple sensors.'),
+
+(8,8,'Sensor Calibration & Troubleshooting','Advanced','45 min',
+'Calibration methods, error handling and debugging sensor interfaces.')
+
+ON CONFLICT (module_id, lesson_order)
+DO NOTHING;

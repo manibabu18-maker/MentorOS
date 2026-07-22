@@ -125,3 +125,44 @@ VALUES
 
 ON CONFLICT (module_id, lesson_order)
 DO NOTHING;
+-- ==========================================
+-- Module 4 : GPIO
+-- ==========================================
+
+INSERT INTO lessons
+(
+    module_id,
+    lesson_order,
+    lesson_title,
+    difficulty,
+    estimated_duration,
+    content
+)
+VALUES
+
+(4,1,'Introduction to GPIO','Beginner','30 min',
+'Understanding General Purpose Input Output pins and their applications.'),
+
+(4,2,'GPIO Registers','Beginner','45 min',
+'GPIO control registers, direction registers and data registers.'),
+
+(4,3,'GPIO Input Configuration','Intermediate','45 min',
+'Configuring GPIO pins as digital inputs with pull-up and pull-down resistors.'),
+
+(4,4,'GPIO Output Configuration','Intermediate','45 min',
+'Configuring GPIO pins as digital outputs and driving LEDs.'),
+
+(4,5,'Push Button Interface','Intermediate','45 min',
+'Interfacing push buttons using GPIO and software debouncing.'),
+
+(4,6,'LED Blinking Project','Beginner','40 min',
+'Creating a basic LED blinking application using GPIO.'),
+
+(4,7,'GPIO Interrupts','Advanced','60 min',
+'Using external interrupts with GPIO pins.'),
+
+(4,8,'GPIO Best Practices','Intermediate','40 min',
+'GPIO protection, power considerations and common mistakes.')
+
+ON CONFLICT (module_id, lesson_order)
+DO NOTHING;

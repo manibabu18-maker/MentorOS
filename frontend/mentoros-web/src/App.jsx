@@ -12,6 +12,7 @@ import Onboarding from "./pages/Onboarding";
 import Lesson from "./pages/Lesson";
 import Modules from "./pages/Modules";
 import LessonDetails from "./pages/LessonDetails";
+import LessonPage from "./pages/LessonPage";
 function App() {
   return (
     <>
@@ -25,8 +26,8 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/lesson/:moduleId" element={<Lesson />} />
         <Route path="/modules/:roadmapId" element={<Modules />} />
+        <Route path="/lesson/:lessonId" element={<LessonPage />} />
         <Route
   path="/lessons/:moduleId"
   element={<LessonDetails />}

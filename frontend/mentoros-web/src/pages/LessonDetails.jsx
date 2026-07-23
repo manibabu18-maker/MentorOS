@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 function LessonDetails() {
@@ -32,29 +32,38 @@ function LessonDetails() {
         <p>No lessons found.</p>
       ) : (
         lessons.map((lesson) => (
-          <div
+          <Link
             key={lesson.id}
+            to={`/lesson/${lesson.id}`}
             style={{
-              border: "1px solid #ccc",
-              padding: "15px",
-              marginBottom: "15px",
-              borderRadius: "8px",
+              textDecoration: "none",
+              color: "black",
             }}
           >
-            <h3>
-              Lesson {lesson.lesson_order}: {lesson.lesson_title}
-            </h3>
+            <div
+              style={{
+                border: "1px solid #ccc",
+                padding: "15px",
+                marginBottom: "15px",
+                borderRadius: "8px",
+                cursor: "pointer",
+              }}
+            >
+              <h3>
+                Lesson {lesson.lesson_order}: {lesson.lesson_title}
+              </h3>
 
-            <p>
-              <strong>Difficulty:</strong> {lesson.difficulty}
-            </p>
+              <p>
+                <strong>Difficulty:</strong> {lesson.difficulty}
+              </p>
 
-            <p>
-              <strong>Duration:</strong> {lesson.estimated_duration}
-            </p>
+              <p>
+                <strong>Duration:</strong> {lesson.estimated_duration}
+              </p>
 
-            <p>{lesson.content}</p>
-          </div>
+              <p>{lesson.content}</p>
+            </div>
+          </Link>
         ))
       )}
     </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 function LessonPage() {
@@ -9,9 +9,8 @@ function LessonPage() {
   const [lesson, setLesson] = useState(null);
   const [allLessons, setAllLessons] = useState([]);
   const [completed, setCompleted] = useState(false);
-    useEffect(() => {
+   useEffect(() => {
     const fetchLesson = async () => {
-      // Current Lesson
       const { data: lessonData, error: lessonError } = await supabase
         .from("lessons")
         .select("*")
@@ -25,7 +24,6 @@ function LessonPage() {
 
       setLesson(lessonData);
 
-      // Module Lessons
       const { data: lessonsData, error: lessonsError } = await supabase
         .from("lessons")
         .select("*")
@@ -38,43 +36,49 @@ function LessonPage() {
       }
 
       setAllLessons(lessonsData);
-      const { data: progress } = await supabase
-  .from("lesson_progress")
-  .select("*")
-  .eq("lesson_id", lessonData.id)
-  .single();
 
-if (progress) {
-  setCompleted(progress.completed);
-}
+      const { data: progress } = await supabase
+        .from("lesson_progress")
+        .select("*")
+        .eq("lesson_id", lessonData.id)
+        .limit(1);
+
+      if (progress && progress.length > 0) {
+        setCompleted(progress[0].completed);
+      }
     };
 
     fetchLesson();
   }, [lessonId]);
-  const markComplete = async () => {
-  const { error } = await supabase
-  .from("lesson_progress")
-  .insert({
-    lesson_id: lesson.id,
-    completed: true,
-  });
+     const markComplete = async () => {
+    const { data: existing } = await supabase
+      .from("lesson_progress")
+      .select("id")
+      .eq("lesson_id", lesson.id)
+      .limit(1);
 
-if (error) {
-  console.error(error);
-} else {
-  setCompleted(true);
-}
+    if (existing && existing.length > 0) {
+      setCompleted(true);
+      return;
+    }
 
-  if (!error) {
+    const { error } = await supabase
+      .from("lesson_progress")
+      .insert({
+        lesson_id: lesson.id,
+        completed: true,
+      });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
     setCompleted(true);
-  }
-};
-    if (!lesson) {
-    return (
-      <div style={{ padding: "40px" }}>
-        <h2>Loading...</h2>
-      </div>
-    );
+  };
+
+  if (!lesson) {
+    return <h2>Loading...</h2>;
   }
 
   const currentIndex = allLessons.findIndex(
@@ -92,128 +96,79 @@ if (error) {
     currentIndex < allLessons.length - 1
       ? allLessons[currentIndex + 1]
       : null;
- return (
-  <div
-    style={{
-      maxWidth: "900px",
-      margin: "40px auto",
-      padding: "20px",
-    }}
-  >
-    <button onClick={() => navigate(-1)}>
-  ← Back
-</button>
+       return (
+    <div style={{ maxWidth: "900px", margin: "40px auto", padding: "20px" }}>
+      <button onClick={() => navigate(-1)}>
+        ← Back
+      </button>
 
-    <div
-      style={{
-        background: "#f4f4f4",
-        padding: "12px",
-        borderRadius: "8px",
-        marginTop: "20px",
-        marginBottom: "20px",
-      }}
-    >
-      <strong>
+      <h2>
         Lesson {currentLessonNumber} of {totalLessons}
-      </strong>
-    </div>
+      </h2>
 
-    {/* Progress Bar */}
-    <div
-      style={{
-        width: "100%",
-        height: "12px",
-        background: "#ddd",
-        borderRadius: "10px",
-        overflow: "hidden",
-        marginBottom: "25px",
-      }}
-    >
       <div
         style={{
-          width: `${
-  totalLessons
-    ? (currentLessonNumber / totalLessons) * 100
-    : 0
-}%`,
-          height: "100%",
-          background: "#4CAF50",
+          width: "100%",
+          height: "10px",
+          background: "#ddd",
+          marginBottom: "20px",
         }}
-      />
-    </div>
+      >
+        <div
+          style={{
+            width: `${
+              totalLessons
+                ? (currentLessonNumber / totalLessons) * 100
+                : 0
+            }%`,
+            height: "100%",
+            background: "green",
+          }}
+        />
+      </div>
 
-    <h1>{lesson.lesson_title}</h1>
+      <h1>{lesson.lesson_title}</h1>
 
-    <p>📘 Lesson {currentLessonNumber}</p>
+      <p>
+        <b>Difficulty:</b> {lesson.difficulty}
+      </p>
 
-    <p>
-      ⭐ <strong>Difficulty:</strong> {lesson.difficulty}
-    </p>
+      <p>
+        <b>Duration:</b> {lesson.estimated_duration}
+      </p>
 
-    <p>
-      ⏱ <strong>Duration:</strong> {lesson.estimated_duration}
-    </p>
+      <hr /> 
+            {completed ? (
+        <button disabled>
+          ✅ Completed
+        </button>
+      ) : (
+        <button onClick={markComplete}>
+          Mark as Complete
+        </button>
+      )}
 
-    <hr />
-    <div style={{ marginTop: "20px", marginBottom: "20px" }}>
-  {completed ? (
-    <button
-      style={{
-        background: "green",
-        color: "white",
-        padding: "10px 20px",
-      }}
-    >
-      ✅ Completed
-    </button>
-  ) : (
-    <button
-      onClick={markComplete}
-      style={{
-        background: "#007bff",
-        color: "white",
-        padding: "10px 20px",
-      }}
-    >
-      Mark as Complete
-    </button>
-  )}
-</div>
+      <h2>Lesson Notes</h2>
 
-    <h2>Lesson Notes</h2>
+      <p>{lesson.content}</p>
 
-    <p style={{ lineHeight: "1.8" }}>
-      {lesson.content}
-    </p>
+      <hr />
 
-    <hr />
-
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        marginTop: "30px",
-      }}
-    >
       <button
         disabled={!previousLesson}
-        onClick={() =>
-          navigate(`/lesson/${previousLesson.id}`)
-        }
+        onClick={() => navigate(`/lesson/${previousLesson.id}`)}
       >
         ← Previous
       </button>
 
       <button
         disabled={!nextLesson}
-        onClick={() =>
-          navigate(`/lesson/${nextLesson.id}`)
-        }
+        onClick={() => navigate(`/lesson/${nextLesson.id}`)}
       >
         Next →
       </button>
     </div>
-  </div>
-);
+  );
 }
-export default LessonPage;     
+
+export default LessonPage;

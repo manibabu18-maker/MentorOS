@@ -1,0 +1,26 @@
+{
+  "lessonInfo": {
+    "title": "Introduction to Python",
+    "difficulty": "Beginner",
+    "duration": "30 Minutes"
+  },
+  "learningObjectives": [
+    "Understand what Python is",
+    "Know where Python is used",
+    "Run your first Python program",
+    "Understand Python career opportunities"
+  ],
+  "theory": {
+    "introduction": "Python is a high-level, interpreted programming language that is easy to learn and widely used in software development, AI, automation, web development and data science."
+  },
+  "codeExamples": [
+    {
+      "title": "Hello World",
+      "code": "print('Hello MentorOS')",
+      "output": "Hello MentorOS"
+    }
+  ],
+  "miniProject": {
+    "title": "Student Introduction Card"
+  }
+}

@@ -1,0 +1,29 @@
+.code-block {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+
+  margin: 16px 0;
+  padding: 20px;
+
+  background: #111827;
+  color: #f9fafb;
+
+  border-radius: 10px;
+  border: 1px solid #374151;
+
+  font-family: "Courier New", Courier, monospace;
+  font-size: 14px;
+  line-height: 1.6;
+
+  white-space: pre;
+  overflow-x: auto;
+
+  tab-size: 4;
+}
+
+.code-block code {
+  font-family: inherit;
+  white-space: pre;
+  display: block;
+}

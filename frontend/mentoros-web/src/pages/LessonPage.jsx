@@ -63,6 +63,107 @@ const formatOutput = (value) => {
 };
 
 
+// --------------------------------
+// SAFE CONTENT RENDER HELPERS
+// --------------------------------
+const asArray = (value) => {
+  if (Array.isArray(value)) return value;
+  if (value === null || value === undefined || value === "") return [];
+  return [value];
+};
+
+const displayText = (value) => {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string" || typeof value === "number") {
+    return formatText(value);
+  }
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return "";
+};
+
+const objectEntries = (value) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  return Object.entries(value).filter(
+    ([, item]) => item !== null && item !== undefined && item !== ""
+  );
+};
+
+const prettyLabel = (key) =>
+  String(key)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const renderInlineValue = (value) => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string" || typeof value === "number") {
+    return displayText(value);
+  }
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (Array.isArray(value)) {
+    return value.map((item, index) => (
+      <span key={index}>
+        {index > 0 ? ", " : ""}
+        {renderInlineValue(item)}
+      </span>
+    ));
+  }
+  return null;
+};
+
+const renderValueBlock = (value, level = 0) => {
+  if (value === null || value === undefined || value === "") return null;
+
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return <p>{displayText(value)}</p>;
+  }
+
+  if (Array.isArray(value)) {
+    return (
+      <ul>
+        {value.map((item, index) => (
+          <li key={index}>
+            {typeof item === "object" && item !== null
+              ? renderValueBlock(item, level + 1)
+              : renderInlineValue(item)}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  return (
+    <div className={level === 0 ? "structured-content" : "structured-content nested-content"}>
+      {objectEntries(value).map(([key, item]) => (
+        <div className="structured-item" key={key}>
+          <h4>{prettyLabel(key)}</h4>
+          {typeof item === "object" && item !== null
+            ? renderValueBlock(item, level + 1)
+            : <p>{renderInlineValue(item)}</p>}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const renderTextList = (value, ordered = false) => {
+  const items = asArray(value);
+  if (!items.length) return null;
+
+  const ListTag = ordered ? "ol" : "ul";
+  return (
+    <ListTag>
+      {items.map((item, index) => (
+        <li key={index}>
+          {typeof item === "object" && item !== null
+            ? renderValueBlock(item)
+            : displayText(item)}
+        </li>
+      ))}
+    </ListTag>
+  );
+};
+
+
 function LessonPage() {
   const { lessonId } = useParams();
   const navigate = useNavigate();
@@ -740,23 +841,20 @@ function LessonPage() {
                     </>
                   )}
 
-                  {example.explanation?.length > 0 && (
-                    <ul>
-                      {example.explanation.map(
-                        (
-                          item,
-                          explanationIndex
-                        ) => (
-                          <li
-                            key={
-                              explanationIndex
-                            }
-                          >
-                            {item}
-                          </li>
-                        )
-                      )}
-                    </ul>
+                  {example.explanation && (
+                    typeof example.explanation === "string" ||
+                    typeof example.explanation === "number"
+                  ) ? (
+                    <p>{displayText(example.explanation)}</p>
+                  ) : (
+                    Array.isArray(example.explanation) &&
+                    example.explanation.length > 0 && (
+                      <ul>
+                        {example.explanation.map((item, explanationIndex) => (
+                          <li key={explanationIndex}>{displayText(item)}</li>
+                        ))}
+                      </ul>
+                    )
                   )}
 
                   {example.key_concept && (
@@ -772,6 +870,157 @@ function LessonPage() {
                 </div>
               )
             )}
+          </section>
+        )}
+
+        {/* ==============================
+            FLEXIBLE THEORY / LESSON 2+
+        =============================== */}
+        {content.theory && (
+          <section className="lesson-section">
+            <span className="section-kicker">UNDERSTAND</span>
+            <h2>Core Idea</h2>
+            {typeof content.theory === "string" ? (
+              <p>{displayText(content.theory)}</p>
+            ) : (
+              renderValueBlock(content.theory)
+            )}
+          </section>
+        )}
+
+        {content.real_world_examples?.length > 0 && (
+          <section className="lesson-section">
+            <span className="section-kicker">REAL-WORLD CONNECTION</span>
+            <h2>Where Will You Use This?</h2>
+            {renderTextList(content.real_world_examples)}
+          </section>
+        )}
+
+        {content.data_types?.length > 0 && (
+          <section className="lesson-section">
+            <span className="section-kicker">DATA TYPES</span>
+            <h2>Common C Data Types</h2>
+            <div className="card-grid">
+              {content.data_types.map((item, index) => (
+                <div className="concept-card" key={index}>
+                  <h3>{displayText(item.type || item.name || `Type ${index + 1}`)}</h3>
+                  {item.purpose && <p><strong>Purpose:</strong> {displayText(item.purpose)}</p>}
+                  {item.example && (
+                    <pre className="code-block"><code>{formatCode(item.example)}</code></pre>
+                  )}
+                  {item.real_world_example && <p>{displayText(item.real_world_example)}</p>}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {content.declaration_and_initialization && (
+          <section className="lesson-section">
+            <span className="section-kicker">CORE CONCEPT</span>
+            <h2>Declaration, Initialization and Assignment</h2>
+            {renderValueBlock(content.declaration_and_initialization)}
+          </section>
+        )}
+
+        {content.format_specifiers?.length > 0 && (
+          <section className="lesson-section">
+            <span className="section-kicker">FORMAT SPECIFIERS</span>
+            <h2>Displaying Different Data Types</h2>
+            {renderTextList(content.format_specifiers)}
+          </section>
+        )}
+
+        {content.operator_categories?.length > 0 && (
+          <section className="lesson-section">
+            <span className="section-kicker">OPERATOR TYPES</span>
+            <h2>Major Categories of Operators</h2>
+            <div className="card-grid">
+              {content.operator_categories.map((item, index) => (
+                <div className="concept-card" key={index}>
+                  <h3>{displayText(item.type || item.name || `Category ${index + 1}`)}</h3>
+                  {item.purpose && <p>{displayText(item.purpose)}</p>}
+                  {item.operators && (
+                    <pre className="code-block"><code>{displayText(item.operators)}</code></pre>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {content.important_concepts?.length > 0 && (
+          <section className="lesson-section">
+            <span className="section-kicker">IMPORTANT CONCEPTS</span>
+            <h2>Remember These Points</h2>
+            {renderTextList(content.important_concepts)}
+          </section>
+        )}
+
+        {content.common_mistakes?.length > 0 && (
+          <section className="lesson-section debugging-section">
+            <span className="section-kicker">COMMON MISTAKES</span>
+            <h2>Watch Out For These Errors</h2>
+            {renderTextList(content.common_mistakes)}
+          </section>
+        )}
+
+        {content.example_program && (
+          <section className="lesson-section">
+            <span className="section-kicker">LEARN BY EXAMPLE</span>
+            <h2>{displayText(content.example_program.title || "Example Program")}</h2>
+            {content.example_program.code && (
+              <pre className="code-block">
+                <code>{formatCode(content.example_program.code)}</code>
+              </pre>
+            )}
+            {content.example_program.output && (
+              <>
+                <h4>Output</h4>
+                <pre className="output-block">
+                  <code>{formatOutput(content.example_program.output)}</code>
+                </pre>
+              </>
+            )}
+            {content.example_program.explanation && (
+              <p>{displayText(content.example_program.explanation)}</p>
+            )}
+          </section>
+        )}
+
+        {content.micro_programs?.length > 0 && (
+          <section className="lesson-section">
+            <span className="section-kicker">PRACTICE</span>
+            <h2>Small Programs to Try</h2>
+            {content.micro_programs.map((program, index) => (
+              <div className="practice-card" key={index}>
+                <h3>{displayText(program.title || `Practice ${index + 1}`)}</h3>
+                {program.task && <p>{displayText(program.task)}</p>}
+                {program.expected_output && (
+                  <p><strong>Expected:</strong> {displayText(program.expected_output)}</p>
+                )}
+                {(program.hint_1 || program.hint_2 || program.hint_3) && (
+                  <details className="hint-box">
+                    <summary>Need a hint?</summary>
+                    <ol>
+                      {[program.hint_1, program.hint_2, program.hint_3]
+                        .filter(Boolean)
+                        .map((hint, hintIndex) => (
+                          <li key={hintIndex}>{displayText(hint)}</li>
+                        ))}
+                    </ol>
+                  </details>
+                )}
+              </div>
+            ))}
+          </section>
+        )}
+
+        {content.build_now?.length > 0 && (
+          <section className="lesson-section project-section">
+            <span className="section-kicker">BUILD SOMETHING</span>
+            <h2>Try Building These</h2>
+            {renderTextList(content.build_now)}
           </section>
         )}
 

@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 /* =========================================================
-   SAFE LESSON RENDERER
-   Supports strings, arrays, objects and nested objects.
-   The lesson data can evolve without React trying to render
-   a raw object as a child.
+   MentorOS Lesson Renderer
+   ---------------------------------------------------------
+   The database remains the source of truth. This file only
+   decides how known lesson fields are presented to students.
+   Unknown fields never become a new page and are not dumped
+   as raw JSON labels.
 ========================================================= */
 
 const text = (value) => {
@@ -17,10 +19,9 @@ const text = (value) => {
   return "";
 };
 
-const label = (key) =>
-  String(key)
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+const hasValue = (value) => value !== null && value !== undefined && value !== "";
+const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+const safeArray = (value) => Array.isArray(value) ? value : (hasValue(value) ? [value] : []);
 
 const formatText = (value) => text(value)
   .replace(/\\\\n/g, "\\n")
@@ -28,14 +29,8 @@ const formatText = (value) => text(value)
   .replace(/\\"/g, '"');
 
 const formatCode = (value) => {
-  if (value === null || value === undefined) return "";
-  let code = String(value)
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .replace(/\\"/g, '"');
-
-  // Preserve C string escape sequences such as printf("Hello\\n").
-  // Convert only escaped newlines that occur outside quoted strings.
+  if (!hasValue(value)) return "";
+  let code = String(value).replace(/\r\n/g, "\n").replace(/\r/g, "\n").replace(/\\"/g, '"');
   let result = "";
   let inString = false;
   let escaped = false;
@@ -56,85 +51,10 @@ const formatCode = (value) => {
     }
     result += c;
   }
-
   return result.trim();
 };
 
 const formatOutput = (value) => formatText(value).replace(/\\n/g, "\n");
-
-const isObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-
-const hasValue = (value) =>
-  value !== null && value !== undefined && value !== "";
-
-const safeArray = (value) => {
-  if (Array.isArray(value)) return value;
-  if (!hasValue(value)) return [];
-  return [value];
-};
-
-function ValueBlock({ value, level = 0 }) {
-  if (!hasValue(value)) return null;
-
-  if (!isObject(value) && !Array.isArray(value)) {
-    return <p>{text(value)}</p>;
-  }
-
-  if (Array.isArray(value)) {
-    return (
-      <ul>
-        {value.map((item, index) => (
-          <li key={index}>
-            {isObject(item) || Array.isArray(item) ? (
-              <ValueBlock value={item} level={level + 1} />
-            ) : (
-              text(item)
-            )}
-          </li>
-        ))}
-      </ul>
-    );
-  }
-
-  return (
-    <div className={level ? "structured-content nested-content" : "structured-content"}>
-      {Object.entries(value).map(([key, item]) => {
-        if (!hasValue(item)) return null;
-        return (
-          <div className="structured-item" key={key}>
-            <h4>{label(key)}</h4>
-            <ValueBlock value={item} level={level + 1} />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function ListBlock({ value, ordered = false }) {
-  const items = safeArray(value);
-  if (!items.length) return null;
-  const Tag = ordered ? "ol" : "ul";
-  return (
-    <Tag>
-      {items.map((item, index) => (
-        <li key={index}>
-          {isObject(item) || Array.isArray(item) ? <ValueBlock value={item} /> : text(item)}
-        </li>
-      ))}
-    </Tag>
-  );
-}
-
-function CodeBlock({ value, output = false }) {
-  if (!hasValue(value)) return null;
-  return (
-    <pre className={output ? "output-block" : "code-block"}>
-      <code>{output ? formatOutput(value) : formatCode(value)}</code>
-    </pre>
-  );
-}
 
 function Section({ kicker, title, children, className = "" }) {
   if (!children) return null;
@@ -147,38 +67,202 @@ function Section({ kicker, title, children, className = "" }) {
   );
 }
 
-function ExampleCard({ example, index }) {
-  if (!isObject(example)) {
-    return (
-      <div className="example-card" key={index}>
-        <ValueBlock value={example} />
-      </div>
-    );
+function CodeBlock({ value, output = false }) {
+  if (!hasValue(value)) return null;
+  return (
+    <pre className={output ? "output-block" : "code-block"}>
+      <code>{output ? formatOutput(value) : formatCode(value)}</code>
+    </pre>
+  );
+}
+
+function BulletList({ value }) {
+  const items = safeArray(value).filter((item) => hasValue(item));
+  if (!items.length) return null;
+  return (
+    <ul className="clean-list">
+      {items.map((item, index) => (
+        <li key={index}>{isObject(item) ? <ObjectSummary value={item} /> : text(item)}</li>
+      ))}
+    </ul>
+  );
+}
+
+function Checklist({ value }) {
+  const items = safeArray(value).filter((item) => hasValue(item));
+  if (!items.length) return null;
+  return (
+    <div className="check-list">
+      {items.map((item, index) => (
+        <div className="check-item" key={index}>
+          <span aria-hidden="true">✓</span>
+          <div>{isObject(item) ? <ObjectSummary value={item} /> : text(item)}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ObjectSummary({ value }) {
+  if (!isObject(value)) return <>{text(value)}</>;
+  const preferred = ["title", "name", "area", "mistake", "description", "explanation", "example", "task", "problem"];
+  const entries = preferred
+    .filter((key) => hasValue(value[key]))
+    .map((key) => [key, value[key]]);
+
+  if (!entries.length) return <>{JSON.stringify(value)}</>;
+
+  return (
+    <div className="object-summary">
+      {entries.map(([key, item]) => (
+        <p key={key}>
+          {key !== "description" && key !== "explanation" && key !== "example" && key !== "task" && key !== "problem" && (
+            <strong>{key.replace(/_/g, " ")}: </strong>
+          )}
+          {isObject(item) ? <ObjectSummary value={item} /> : Array.isArray(item) ? <BulletList value={item} /> : text(item)}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function ConceptCards({ value }) {
+  if (!hasValue(value)) return null;
+  const cards = [];
+
+  if (Array.isArray(value)) {
+    value.forEach((item) => cards.push(item));
+  } else if (isObject(value)) {
+    Object.entries(value).forEach(([key, item]) => {
+      if (hasValue(item)) cards.push({ title: key.replace(/_/g, " "), value: item });
+    });
+  } else {
+    return <p>{text(value)}</p>;
   }
 
   return (
-    <div className="example-card" key={index}>
-      <h3>{text(example.title) || `Example ${index + 1}`}</h3>
-      {hasValue(example.purpose) && (
-        <p><strong>Purpose:</strong> {text(example.purpose)}</p>
+    <div className="concept-grid">
+      {cards.map((item, index) => {
+        if (!isObject(item) || !hasValue(item.value)) {
+          return (
+            <article className="concept-card" key={index}>
+              {isObject(item) ? <ObjectSummary value={item} /> : <p>{text(item)}</p>}
+            </article>
+          );
+        }
+
+        return (
+          <article className="concept-card" key={index}>
+            <h3>{text(item.title).replace(/\b\w/g, (c) => c.toUpperCase())}</h3>
+            {Array.isArray(item.value) ? <BulletList value={item.value} /> : isObject(item.value) ? <ObjectSummary value={item.value} /> : <p>{text(item.value)}</p>}
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function StartHereSection({ data }) {
+  if (!isObject(data)) return null;
+  return (
+    <Section kicker="START HERE" title={text(data.title) || "Before Learning C"}>
+      {hasValue(data.explanation) && <p>{text(data.explanation)}</p>}
+      {isObject(data.example) && (
+        <div className="analogy-card">
+          {hasValue(data.example.problem) && <h3>{text(data.example.problem)}</h3>}
+          <BulletList value={data.example.steps} />
+        </div>
       )}
+      {hasValue(data.key_idea) && <div className="key-idea"><strong>Key idea:</strong> {text(data.key_idea)}</div>}
+    </Section>
+  );
+}
+
+function WhatIsCSection({ data }) {
+  if (!isObject(data)) return null;
+  return (
+    <Section kicker="UNDERSTAND" title={text(data.title) || "What Is C?"}>
+      {hasValue(data.explanation) && <p className="lead-text">{text(data.explanation)}</p>}
+      {hasValue(data.important_idea) && <div className="key-idea"><strong>Important idea:</strong> {text(data.important_idea)}</div>}
+      {hasValue(data.importantIdea) && <div className="key-idea"><strong>Important idea:</strong> {text(data.importantIdea)}</div>}
+    </Section>
+  );
+}
+
+function RealWorldSection({ content }) {
+  const source = content.where_c_is_used || content.real_world_connection || content.real_world_examples || content.real_world_applications;
+  if (!hasValue(source)) return null;
+
+  let title = "Where Is C Used?";
+  let items = source;
+
+  if (isObject(source)) {
+    title = text(source.title) || title;
+    items = source.applications || source.items || source.examples || source;
+  }
+
+  if (isObject(items) && !Array.isArray(items)) {
+    items = Object.entries(items).map(([key, value]) => ({ title: key.replace(/_/g, " "), value }));
+  }
+
+  return (
+    <Section kicker="REAL-WORLD CONNECTION" title={title}>
+      <div className="concept-grid">
+        {safeArray(items).map((item, index) => {
+          if (!isObject(item)) return <article className="concept-card" key={index}><p>{text(item)}</p></article>;
+          const heading = text(item.title) || text(item.area) || text(item.name) || `Application ${index + 1}`;
+          const body = item.example || item.description || item.value || item.examples;
+          return (
+            <article className="concept-card" key={index}>
+              <h3>{heading}</h3>
+              {Array.isArray(body) ? <BulletList value={body} /> : isObject(body) ? <ObjectSummary value={body} /> : <p>{text(body)}</p>}
+            </article>
+          );
+        })}
+      </div>
+    </Section>
+  );
+}
+
+function ProgramFlowSection({ data }) {
+  if (!hasValue(data)) return null;
+  const steps = isObject(data) ? (data.steps || data.flow || data.process) : data;
+  if (!Array.isArray(steps)) return <ConceptCards value={data} />;
+
+  return (
+    <Section kicker="PROGRAM FLOW" title="How a C Program Works">
+      <div className="flow-list">
+        {steps.map((step, index) => (
+          <div className="flow-item" key={index}>
+            <span>{index + 1}</span>
+            <p>{isObject(step) ? <ObjectSummary value={step} /> : text(step)}</p>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+function ExampleCard({ example, index }) {
+  if (!isObject(example)) return <article className="example-card" key={index}><p>{text(example)}</p></article>;
+  return (
+    <article className="example-card" key={index}>
+      <div className="example-heading">
+        <span className="example-number">Example {index + 1}</span>
+        <h3>{text(example.title) || "C Program"}</h3>
+      </div>
+      {hasValue(example.purpose) && <p className="example-purpose">{text(example.purpose)}</p>}
       {hasValue(example.description) && <p>{text(example.description)}</p>}
       {hasValue(example.code) && <CodeBlock value={example.code} />}
       {hasValue(example.output) && (
-        <>
+        <div className="output-area">
           <h4>Output</h4>
           <CodeBlock value={example.output} output />
-        </>
-      )}
-      {hasValue(example.explanation) && (
-        <div className="example-explanation">
-          <ValueBlock value={example.explanation} />
         </div>
       )}
-      {hasValue(example.key_concept) && (
-        <div className="key-idea"><strong>Key Concept:</strong> {text(example.key_concept)}</div>
-      )}
-    </div>
+      {hasValue(example.explanation) && <div className="explanation-box"><strong>Why it works</strong><p>{isObject(example.explanation) ? <ObjectSummary value={example.explanation} /> : text(example.explanation)}</p></div>}
+      {hasValue(example.key_concept) && <div className="key-idea"><strong>Key concept:</strong> {text(example.key_concept)}</div>}
+    </article>
   );
 }
 
@@ -186,35 +270,9 @@ function ExampleSection({ content }) {
   if (!Array.isArray(content.examples) || !content.examples.length) return null;
   return (
     <Section kicker="LEARN BY EXAMPLE" title="Examples">
-      {content.examples.map((example, index) => (
-        <ExampleCard example={example} index={index} key={index} />
-      ))}
-    </Section>
-  );
-}
-
-function RealWorldSection({ content }) {
-  const items = content.real_world_connection?.applications || content.real_world_examples || content.real_world_applications;
-  if (!hasValue(items)) return null;
-
-  return (
-    <Section kicker="REAL-WORLD CONNECTION" title={text(content.real_world_connection?.title) || "Where Will You Use This?"}>
-      {Array.isArray(items) ? (
-        <div className="card-grid">
-          {items.map((item, index) => (
-            <div className="concept-card" key={index}>
-              {isObject(item) ? (
-                <>
-                  <h3>{text(item.title) || text(item.area) || `Application ${index + 1}`}</h3>
-                  {hasValue(item.example) && <p>{text(item.example)}</p>}
-                  {hasValue(item.description) && <p>{text(item.description)}</p>}
-                  {Array.isArray(item.examples) && <ListBlock value={item.examples} />}
-                </>
-              ) : <p>{text(item)}</p>}
-            </div>
-          ))}
-        </div>
-      ) : <ValueBlock value={items} />}
+      <div className="example-stack">
+        {content.examples.map((example, index) => <ExampleCard example={example} index={index} key={index} />)}
+      </div>
     </Section>
   );
 }
@@ -223,16 +281,34 @@ function ThinkSection({ content }) {
   const data = content.think_before_you_run || content.output_prediction;
   if (!isObject(data)) return null;
   return (
-    <Section kicker="THINK BEFORE YOU RUN" title={text(data.title) || "Think Before You Run"} className="practice-section">
+    <Section kicker="THINK BEFORE YOU RUN" title={text(data.title) || "Think Before You Run"}>
       {hasValue(data.code) && <CodeBlock value={data.code} />}
       {hasValue(data.question) && <p>{text(data.question)}</p>}
       {hasValue(data.task) && <p>{text(data.task)}</p>}
-      <details className="hint-box">
+      <details className="interactive-box">
         <summary>Show expected output</summary>
         {hasValue(data.expected_output) && <CodeBlock value={data.expected_output} output />}
-        {hasValue(data.explanation) && <ValueBlock value={data.explanation} />}
+        {hasValue(data.explanation) && <p>{isObject(data.explanation) ? <ObjectSummary value={data.explanation} /> : text(data.explanation)}</p>}
       </details>
     </Section>
+  );
+}
+
+function HintDetails({ hints, labelText = "Need a hint?" }) {
+  const items = safeArray(hints).filter((item) => hasValue(item));
+  if (!items.length) return null;
+  return (
+    <details className="interactive-box hint-box">
+      <summary>{labelText}</summary>
+      <div className="hint-list">
+        {items.map((hint, index) => (
+          <div className="hint-item" key={index}>
+            <span>💡</span>
+            <p>{isObject(hint) ? <ObjectSummary value={hint} /> : text(hint)}</p>
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }
 
@@ -241,19 +317,17 @@ function PracticeSection({ content }) {
   if (!Array.isArray(practices) || !practices.length) return null;
   return (
     <Section kicker="YOUR TURN" title="Guided Practice">
-      {practices.map((practice, index) => (
-        <div className="practice-card" key={index}>
-          <h3>{text(practice?.title) || `Practice ${index + 1}`}</h3>
-          {hasValue(practice?.task) && <p>{text(practice.task)}</p>}
-          {hasValue(practice?.hint) && <p><strong>Hint:</strong> {text(practice.hint)}</p>}
-          {Array.isArray(practice?.hints) && practice.hints.length > 0 && (
-            <details className="hint-box">
-              <summary>Need a hint?</summary>
-              <ListBlock value={practice.hints} ordered />
-            </details>
-          )}
-        </div>
-      ))}
+      <div className="practice-grid">
+        {practices.map((practice, index) => (
+          <article className="practice-card" key={index}>
+            <span className="activity-label">Practice {index + 1}</span>
+            <h3>{text(practice?.title) || `Practice ${index + 1}`}</h3>
+            {hasValue(practice?.task) && <p>{text(practice.task)}</p>}
+            {hasValue(practice?.hint) && <div className="small-hint"><span>💡</span>{text(practice.hint)}</div>}
+            <HintDetails hints={practice?.hints} />
+          </article>
+        ))}
+      </div>
     </Section>
   );
 }
@@ -262,25 +336,31 @@ function DebuggingSection({ content }) {
   const data = content.debugging || content.debugging_task || content.debugging_activity;
   if (!isObject(data)) return null;
   return (
-    <Section kicker="DEBUGGING" title={text(data.title) || "Find the Error"} className="debugging-section">
+    <Section kicker="DEBUGGING" title={text(data.title) || "Find the Error"}>
       {hasValue(data.description) && <p>{text(data.description)}</p>}
       {hasValue(data.code) && <CodeBlock value={data.code} />}
       {hasValue(data.question) && <p>{text(data.question)}</p>}
       {hasValue(data.task) && <p>{text(data.task)}</p>}
-      {Array.isArray(data.hints) && data.hints.length > 0 && (
-        <details className="hint-box">
-          <summary>Need a debugging hint?</summary>
-          <ListBlock value={data.hints} ordered />
-        </details>
-      )}
-      {hasValue(data.hint_1) && <p><strong>Hint:</strong> {text(data.hint_1)}</p>}
-      {hasValue(data.solution_explanation) && (
-        <div className="key-idea"><strong>Explanation:</strong> {text(data.solution_explanation)}</div>
-      )}
-      {hasValue(data.learning_goal) && (
-        <div className="key-idea"><strong>Goal:</strong> {text(data.learning_goal)}</div>
-      )}
+      <HintDetails hints={data.hints} labelText="Need a debugging hint?" />
+      {hasValue(data.hint_1) && <div className="small-hint"><span>💡</span>{text(data.hint_1)}</div>}
+      {hasValue(data.solution_explanation) && <div className="explanation-box"><strong>Explanation</strong><p>{text(data.solution_explanation)}</p></div>}
+      {hasValue(data.learning_goal) && <div className="key-idea"><strong>Goal:</strong> {text(data.learning_goal)}</div>}
     </Section>
+  );
+}
+
+function RequirementList({ title, value, numbered = false }) {
+  const items = safeArray(value).filter((item) => hasValue(item));
+  if (!items.length) return null;
+  return (
+    <div className="requirement-block">
+      {title && <h3>{title}</h3>}
+      {numbered ? (
+        <div className="step-list">
+          {items.map((item, index) => <div className="step-row" key={index}><span>{index + 1}</span><p>{isObject(item) ? <ObjectSummary value={item} /> : text(item)}</p></div>)}
+        </div>
+      ) : <Checklist value={items} />}
+    </div>
   );
 }
 
@@ -288,55 +368,37 @@ function ChallengeSection({ content }) {
   const data = content.challenge;
   if (!isObject(data)) return null;
   return (
-    <Section kicker="CHALLENGE" title={text(data.title) || "Challenge"} className="challenge-section">
-      {hasValue(data.description) && <p>{text(data.description)}</p>}
+    <Section kicker="CHALLENGE" title={text(data.title) || "Challenge"}>
+      {hasValue(data.description) && <p className="lead-text">{text(data.description)}</p>}
       {hasValue(data.task) && <p>{text(data.task)}</p>}
-      {Array.isArray(data.requirements) && data.requirements.length > 0 && (
-        <><h3>Requirements</h3><ListBlock value={data.requirements} /></>
+      <RequirementList title="Requirements" value={data.requirements} />
+      <RequirementList title="Rules" value={data.rules} />
+      <HintDetails hints={data.hints || data.hint_levels} />
+      {hasValue(data.expected_format) && (
+        <div className="format-box"><h3>Expected Format</h3><CodeBlock value={data.expected_format} output /></div>
       )}
-      {Array.isArray(data.rules) && data.rules.length > 0 && (
-        <><h3>Rules</h3><ListBlock value={data.rules} /></>
-      )}
-      {Array.isArray(data.hints) && data.hints.length > 0 && (
-        <details className="hint-box"><summary>Need a hint?</summary><ListBlock value={data.hints} ordered /></details>
-      )}
-      {Array.isArray(data.hint_levels) && data.hint_levels.length > 0 && (
-        <details className="hint-box"><summary>Need a hint?</summary><ListBlock value={data.hint_levels} ordered /></details>
-      )}
-      {hasValue(data.expected_format) && <><h3>Expected Format</h3><CodeBlock value={data.expected_format} output /></>}
     </Section>
   );
 }
 
-function InterviewSection({ content }) {
-  if (!hasValue(content.interview_questions)) return null;
+function CommonMistakesSection({ content }) {
+  const mistakes = safeArray(content.common_mistakes).filter((item) => hasValue(item));
+  if (!mistakes.length) return null;
   return (
-    <Section kicker="INTERVIEW PREPARATION" title="Interview Questions">
-      <ListBlock value={content.interview_questions} ordered />
-    </Section>
-  );
-}
-
-function MiniProjectSection({ content }) {
-  const p = content.mini_project;
-  if (!isObject(p)) return null;
-  const description = p.description || p.problem;
-  return (
-    <Section kicker="BUILD SOMETHING" title={`🛠️ ${text(p.title) || "Mini Project"}`} className="project-section">
-      {hasValue(description) && <p>{text(description)}</p>}
-      {hasValue(p.real_world_connection) && (
-        <div className="key-idea"><strong>Real-world connection:</strong> {text(p.real_world_connection)}</div>
-      )}
-      {Array.isArray(p.requirements) && p.requirements.length > 0 && <><h3>Requirements</h3><ListBlock value={p.requirements} /></>}
-      {Array.isArray(p.skills) && p.skills.length > 0 && <><h3>Skills You Practice</h3><ListBlock value={p.skills} /></>}
-      {Array.isArray(p.skills_learned) && p.skills_learned.length > 0 && <><h3>Skills You Practice</h3><ListBlock value={p.skills_learned} /></>}
-      {Array.isArray(p.grade_rules) && p.grade_rules.length > 0 && <><h3>Grade Rules</h3><ListBlock value={p.grade_rules} /></>}
-      {Array.isArray(p.testing) && p.testing.length > 0 && <><h3>Testing</h3><ListBlock value={p.testing} /></>}
-      {p.suggested_data && <><h3>Suggested Data</h3><ValueBlock value={p.suggested_data} /></>}
-      {hasValue(p.expected_output) && <><h3>Expected Output</h3><CodeBlock value={p.expected_output} output /></>}
-      {Array.isArray(p.hints) && p.hints.length > 0 && <details className="hint-box"><summary>Need a hint?</summary><ListBlock value={p.hints} ordered /></details>}
-      {hasValue(p.extension) && <p><strong>Try More:</strong> {text(p.extension)}</p>}
-      {hasValue(p.next_topic_connection) && <div className="key-idea"><strong>Next Lesson:</strong> {text(p.next_topic_connection)}</div>}
+    <Section kicker="COMMON MISTAKES" title="Watch Out For These Errors">
+      <div className="mistake-grid">
+        {mistakes.map((item, index) => (
+          <article className="mistake-card" key={index}>
+            {isObject(item) ? (
+              <>
+                <h3>{text(item.mistake) || text(item.title) || `Common mistake ${index + 1}`}</h3>
+                {hasValue(item.explanation) && <p>{isObject(item.explanation) ? <ObjectSummary value={item.explanation} /> : text(item.explanation)}</p>}
+                {hasValue(item.example) && <div className="small-example"><strong>Example:</strong><p>{isObject(item.example) ? <ObjectSummary value={item.example} /> : text(item.example)}</p></div>}
+              </>
+            ) : <p>{text(item)}</p>}
+          </article>
+        ))}
+      </div>
     </Section>
   );
 }
@@ -346,13 +408,13 @@ function ProgrammerMindset({ content }) {
   if (!isObject(data)) return null;
   const steps = data.steps || data.thinking_process;
   return (
-    <Section kicker="PROGRAMMER MINDSET" title={text(data.title) || "Think Like a Programmer"}>
+    <Section kicker="PROGRAMMER MINDSET" title={text(data.title) || "Break the Problem Into Smaller Parts"}>
       {hasValue(data.problem) && <p><strong>Problem:</strong> {text(data.problem)}</p>}
-      <div className="flow-list">
-        {Array.isArray(steps) && steps.map((step, index) => (
-          <div className="flow-item" key={index}><span>{index + 1}</span><p>{text(step)}</p></div>
-        ))}
-      </div>
+      {Array.isArray(steps) && (
+        <div className="step-list">
+          {steps.map((step, index) => <div className="step-row" key={index}><span>{index + 1}</span><p>{isObject(step) ? <ObjectSummary value={step} /> : text(step)}</p></div>)}
+        </div>
+      )}
       {hasValue(data.skill) && <div className="key-idea"><strong>Skill:</strong> {text(data.skill)}</div>}
     </Section>
   );
@@ -363,111 +425,104 @@ function AiMentorSection({ content }) {
   if (!isObject(data)) return null;
   const interaction = data.example_interaction;
   return (
-    <Section kicker="AI MENTOR" title="🤖 Learn With Your AI Mentor" className="ai-mentor-section">
+    <Section kicker="AI MENTOR" title="Learn With Your AI Mentor">
       {hasValue(data.description) && <p>{text(data.description)}</p>}
-      {Array.isArray(data.hint_levels) && data.hint_levels.length > 0 && (
-        <div className="mentor-rules">
+      {Array.isArray(data.hint_levels) && (
+        <div className="mentor-levels">
           {data.hint_levels.map((level, index) => (
-            <div className="mentor-step" key={index}><span>{index + 1}</span><div><strong>Hint {index + 1}</strong><p>{text(level)}</p></div></div>
+            <details className="mentor-level" key={index}>
+              <summary>Hint {index + 1}</summary>
+              <p>{isObject(level) ? <ObjectSummary value={level} /> : text(level)}</p>
+            </details>
           ))}
         </div>
       )}
       {isObject(interaction) && (
         <div className="mentor-example">
           {Object.entries(interaction).map(([key, value]) => (
-            <p key={key}><strong>{label(key)}:</strong> {text(value)}</p>
+            <p key={key}><strong>{key.replace(/_/g, " ")}:</strong> {isObject(value) ? <ObjectSummary value={value} /> : text(value)}</p>
           ))}
         </div>
       )}
-      {Array.isArray(data.rules) && <ListBlock value={data.rules} />}
+      {Array.isArray(data.rules) && <Checklist value={data.rules} />}
     </Section>
   );
 }
 
-
-function LegacySections({ content }) {
+function MiniProjectSection({ content }) {
+  const p = content.mini_project;
+  if (!isObject(p)) return null;
   return (
-    <>
-      {content.start_here && (
-        <Section kicker="START HERE" title={text(content.start_here.title) || "Start Here"}>
-          {hasValue(content.start_here.explanation) && <p>{text(content.start_here.explanation)}</p>}
-          {isObject(content.start_here.example) && (
-            <div className="concept-card">
-              {hasValue(content.start_here.example.problem) && <h3>{text(content.start_here.example.problem)}</h3>}
-              <ListBlock value={content.start_here.example.steps} ordered />
-            </div>
-          )}
-          {hasValue(content.start_here.key_idea) && <div className="key-idea"><strong>Key Idea:</strong> {text(content.start_here.key_idea)}</div>}
-        </Section>
-      )}
-      {content.what_is_c && (
-        <Section kicker="UNDERSTAND" title={text(content.what_is_c.title) || "What Is C?"}>
-          <ValueBlock value={content.what_is_c} />
-        </Section>
-      )}
-      {content.where_c_is_used && (
-        <Section kicker="REAL-WORLD CONNECTION" title="Where Is C Actually Used?">
-          <ValueBlock value={content.where_c_is_used} />
-        </Section>
-      )}
-      {content.concepts && (
-        <Section kicker="CORE CONCEPTS" title="Understand the Building Blocks">
-          <ValueBlock value={content.concepts} />
-        </Section>
-      )}
-      {content.common_mistakes && (
-        <Section kicker="COMMON MISTAKES" title="Watch Out For These Errors" className="debugging-section">
-          <ValueBlock value={content.common_mistakes} />
-        </Section>
-      )}
-      {content.unseen_challenge && (
-        <Section kicker="TEST YOUR UNDERSTANDING" title={text(content.unseen_challenge.title) || "Test Your Understanding"} className="challenge-section">
-          {hasValue(content.unseen_challenge.task) && <p>{text(content.unseen_challenge.task)}</p>}
-          {content.unseen_challenge.requirements && <><h3>Requirements</h3><ListBlock value={content.unseen_challenge.requirements} /></>}
-          {content.unseen_challenge.rules && <><h3>Rules</h3><ListBlock value={content.unseen_challenge.rules} /></>}
-          {hasValue(content.unseen_challenge.ai_support) && <div className="key-idea"><strong>AI Mentor:</strong> {text(content.unseen_challenge.ai_support)}</div>}
-        </Section>
-      )}
-      {content.compiler_activity && (
-        <Section kicker="PRACTICAL LAB" title={text(content.compiler_activity.title) || "Try It Yourself"} className="tool-section">
-          {hasValue(content.compiler_activity.description) && <p>{text(content.compiler_activity.description)}</p>}
-          {Array.isArray(content.compiler_activity.workflow) && <><h3>Workflow</h3><ListBlock value={content.compiler_activity.workflow} ordered /></>}
-        </Section>
-      )}
-      {content.lesson_completion && (
-        <Section kicker="LESSON CHECK" title="Before You Complete This Lesson" className="completion-section">
-          {content.lesson_completion.requirements && <ListBlock value={content.lesson_completion.requirements} />}
-          {hasValue(content.lesson_completion.completion_message) && <p>{text(content.lesson_completion.completion_message)}</p>}
-        </Section>
-      )}
-    </>
+    <Section kicker="BUILD SOMETHING" title={`🛠️ ${text(p.title) || "Mini Project"}`}>
+      {(p.description || p.problem) && <p className="lead-text">{text(p.description || p.problem)}</p>}
+      {hasValue(p.real_world_connection) && <div className="key-idea"><strong>Real-world connection:</strong> {text(p.real_world_connection)}</div>}
+      <RequirementList title="Requirements" value={p.requirements} />
+      <RequirementList title="Skills You Practice" value={p.skills || p.skills_learned} />
+      <RequirementList title="Grade Rules" value={p.grade_rules} />
+      <RequirementList title="Testing" value={p.testing} />
+      {p.suggested_data && <div className="data-card"><h3>Suggested Data</h3><ObjectSummary value={p.suggested_data} /></div>}
+      {hasValue(p.expected_output) && <div className="format-box"><h3>Expected Output</h3><CodeBlock value={p.expected_output} output /></div>}
+      <HintDetails hints={p.hints} />
+      {hasValue(p.extension) && <p><strong>Try more:</strong> {text(p.extension)}</p>}
+      {hasValue(p.next_topic_connection) && <div className="key-idea"><strong>Next lesson:</strong> {text(p.next_topic_connection)}</div>}
+    </Section>
   );
 }
 
-function GenericExtraSections({ content }) {
-  const known = new Set([
-    "title", "difficulty", "duration", "next_topic", "why_learn", "learning_objectives",
-    "start_here", "what_is_c", "where_c_is_used", "program_execution", "concepts", "examples",
-    "theory", "real_world_examples", "real_world_applications", "real_world_connection", "data_types",
-    "declaration_and_initialization", "format_specifiers", "operator_categories", "important_concepts",
-    "common_mistakes", "example_program", "micro_programs", "build_now", "output_prediction",
-    "think_before_you_run", "guided_practice", "debugging", "debugging_task", "debugging_activity",
-    "challenge", "compiler_activity", "ai_mentor", "unseen_challenge", "think_like_a_programmer",
-    "programmer_mindset", "interview_questions", "mini_project", "lesson_completion"
-  ]);
-
+function InterviewSection({ content }) {
+  const questions = safeArray(content.interview_questions).filter((q) => hasValue(q));
+  if (!questions.length) return null;
   return (
-    <>
-      {Object.entries(content).map(([key, value]) => {
-        if (known.has(key) || !hasValue(value)) return null;
-        return (
-          <Section key={key} kicker="MORE TO EXPLORE" title={label(key)}>
-            <ValueBlock value={value} />
-          </Section>
-        );
-      })}
-    </>
+    <Section kicker="INTERVIEW PREPARATION" title="Interview Questions">
+      <div className="question-list">
+        {questions.map((question, index) => (
+          <article className="question-card" key={index}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <p>{isObject(question) ? <ObjectSummary value={question} /> : text(question)}</p>
+          </article>
+        ))}
+      </div>
+    </Section>
   );
+}
+
+function PracticalLab({ content }) {
+  const data = content.compiler_activity;
+  if (!isObject(data)) return null;
+  return (
+    <Section kicker="PRACTICAL LAB" title={text(data.title) || "Try It Yourself"}>
+      {hasValue(data.description) && <p>{text(data.description)}</p>}
+      <RequirementList title="Workflow" value={data.workflow} numbered />
+    </Section>
+  );
+}
+
+function LessonCheck({ content }) {
+  const data = content.lesson_completion;
+  if (!isObject(data)) return null;
+  return (
+    <Section kicker="LESSON CHECK" title="Before You Complete This Lesson">
+      <Checklist value={data.requirements} />
+      {hasValue(data.completion_message) && <p className="completion-message">{text(data.completion_message)}</p>}
+    </Section>
+  );
+}
+
+function NextTopic({ content }) {
+  if (!hasValue(content.next_topic)) return null;
+  const value = isObject(content.next_topic) ? (content.next_topic.title || content.next_topic.topic || content.next_topic.description) : content.next_topic;
+  return <Section kicker="NEXT STEP" title="What Comes Next?"><p className="next-topic-card">{text(value)}</p></Section>;
+}
+
+function PartOutcome({ partKey }) {
+  const outcomes = {
+    understand: "You should be able to explain the concept, why it matters, and where it is used.",
+    learn: "You should be able to recognize the main syntax and explain the examples.",
+    practice: "You should be able to predict output, write a small program, and debug a basic mistake.",
+    challenge: "You should be able to combine the concepts to solve a programming problem.",
+    build: "You should be able to build, test, and explain a small program."
+  };
+  return <div className="part-outcome"><strong>After this part</strong><p>{outcomes[partKey]}</p></div>;
 }
 
 function LessonPage() {
@@ -526,8 +581,8 @@ function LessonPage() {
         .order("lesson_order");
 
       const { data: { user } } = await supabase.auth.getUser();
-
       let progressCompleted = false;
+
       if (user) {
         const { data: progress, error: progressError } = await supabase
           .from("lesson_progress")
@@ -603,139 +658,96 @@ function LessonPage() {
   const nextLesson = currentIndex >= 0 && currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
   const content = lessonContent || {};
 
-  /*
-     Group content by learning flow instead of by individual database fields.
-     A lesson should normally contain 3-5 internal pages, not 10-15.
-     These are UI pages only; progress still belongs to the same lesson_id.
-  */
   const pages = useMemo(() => {
-    const parts = [
-      {
-        key: "understand",
-        title: "Understand",
-        subtitle: "What is this and why do you need it?",
-        nodes: [
-          content.why_learn && (
-            <Section kicker="WHY THIS MATTERS" title="Why This Matters">
-              <ListBlock value={content.why_learn} />
-            </Section>
-          ),
-          content.learning_objectives && (
-            <Section kicker="LEARNING GOALS" title="What You Will Be Able To Do">
-              <ListBlock value={content.learning_objectives} />
-            </Section>
-          ),
-          content.theory && (
-            <Section kicker="UNDERSTAND" title="Core Idea">
-              <ValueBlock value={content.theory} />
-            </Section>
-          ),
-          content.understand && (
-            <Section
-              kicker="UNDERSTAND"
-              title={text(content.understand.title) || "Core Idea"}
-            >
-              <ValueBlock value={content.understand} />
-            </Section>
-          ),
-          content.operator_connection && (
-            <Section
-              kicker="CONNECT THE CONCEPTS"
-              title={text(content.operator_connection.title) || "From Operators to Decisions"}
-            >
-              <ValueBlock value={content.operator_connection} />
-            </Section>
-          ),
-          <RealWorldSection key="real-world" content={content} />
-        ].filter(Boolean)
-      },
+    const parts = [];
 
-      {
-        key: "learn",
-        title: "Learn",
-        subtitle: "How does the concept work?",
-        nodes: [
-          content.conditional_types && (
-            <Section kicker="CONDITIONAL TYPES" title="Major Conditional Statements">
-              <ValueBlock value={content.conditional_types} />
-            </Section>
-          ),
-          content.important_concepts && (
-            <Section kicker="IMPORTANT CONCEPTS" title="Remember These Points">
-              <ListBlock value={content.important_concepts} />
-            </Section>
-          ),
-          content.operator_categories && (
-            <Section kicker="OPERATOR TYPES" title="Major Categories of Operators">
-              <ValueBlock value={content.operator_categories} />
-            </Section>
-          ),
-          content.boundary_values && (
-            <Section
-              kicker="IMPORTANT"
-              title={text(content.boundary_values.title) || "Boundary Values"}
-            >
-              <ValueBlock value={content.boundary_values} />
-            </Section>
-          ),
-          <ExampleSection key="examples" content={content} />
-        ].filter(Boolean)
-      },
+    parts.push({
+      key: "understand",
+      title: "Understand",
+      subtitle: "What is this and why do you need it?",
+      nodes: [
+        content.why_learn && <Section key="why" kicker="WHY THIS MATTERS" title="Why This Matters"><Checklist value={content.why_learn} /></Section>,
+        content.learning_objectives && <Section key="goals" kicker="LEARNING GOALS" title="What You Will Be Able To Do"><Checklist value={content.learning_objectives} /></Section>,
+        content.start_here && <StartHereSection key="start" data={content.start_here} />,
+        content.what_is_c && <WhatIsCSection key="what" data={content.what_is_c} />,
+        content.theory && !content.what_is_c && <Section key="theory" kicker="UNDERSTAND" title="Core Idea"><ObjectSummary value={content.theory} /></Section>,
+        content.understand && <Section key="understand" kicker="UNDERSTAND" title={text(content.understand.title) || "Core Idea"}><ObjectSummary value={content.understand} /></Section>,
+        content.operator_connection && <Section key="connection" kicker="CONNECT THE CONCEPTS" title={text(content.operator_connection.title) || "Connect the Concepts"}><ObjectSummary value={content.operator_connection} /></Section>,
+        <RealWorldSection key="real-world" content={content} />
+      ].filter(Boolean)
+    });
 
-      {
-        key: "practice",
-        title: "Practice",
-        subtitle: "Can you predict, practice and debug it?",
-        nodes: [
-          <ThinkSection key="think" content={content} />,
-          <PracticeSection key="practice" content={content} />,
-          <DebuggingSection key="debugging" content={content} />
-        ].filter(Boolean)
-      },
+    parts.push({
+      key: "learn",
+      title: "Learn",
+      subtitle: "How does the concept work?",
+      nodes: [
+        content.concepts && <Section key="concepts" kicker="CORE CONCEPTS" title="Understand the Building Blocks"><ConceptCards value={content.concepts} /></Section>,
+        content.theory && content.what_is_c && <Section key="theory-learn" kicker="CORE IDEA" title="The Core Idea"><ObjectSummary value={content.theory} /></Section>,
+        content.important_concepts && <Section key="important" kicker="IMPORTANT CONCEPTS" title="Remember These Points"><Checklist value={content.important_concepts} /></Section>,
+        content.boundary_values && <Section key="boundary" kicker="IMPORTANT" title={text(content.boundary_values.title) || "Boundary Values"}><ConceptCards value={content.boundary_values} /></Section>,
+        content.data_types && <Section key="types" kicker="CORE CONCEPT" title="Data Types"><ConceptCards value={content.data_types} /></Section>,
+        content.declaration_and_initialization && <Section key="decl" kicker="CORE CONCEPT" title="Declaration and Initialization"><ConceptCards value={content.declaration_and_initialization} /></Section>,
+        content.format_specifiers && <Section key="format" kicker="CORE CONCEPT" title="Format Specifiers"><ConceptCards value={content.format_specifiers} /></Section>,
+        content.operator_categories && <Section key="ops" kicker="OPERATOR TYPES" title="Major Categories of Operators"><ConceptCards value={content.operator_categories} /></Section>,
+        content.conditional_types && <Section key="conditions" kicker="CONDITIONAL TYPES" title="Major Conditional Statements"><ConceptCards value={content.conditional_types} /></Section>,
+        content.program_execution && <ProgramFlowSection key="flow" data={content.program_execution} />,
+        content.example_program && <Section key="example-program" kicker="LEARN BY EXAMPLE" title="Example Program"><ConceptCards value={content.example_program} /></Section>,
+        content.micro_programs && <Section key="micro" kicker="LEARN BY EXAMPLE" title="Small Programs"><ConceptCards value={content.micro_programs} /></Section>,
+        <ExampleSection key="examples" content={content} />
+      ].filter(Boolean)
+    });
 
-      {
-        key: "challenge",
-        title: "Challenge",
-        subtitle: "Can you solve a problem using what you learned?",
-        nodes: [
-          <ChallengeSection key="challenge" content={content} />,
-          <ProgrammerMindset key="mindset" content={content} />,
-          <AiMentorSection key="mentor" content={content} />
-        ].filter(Boolean)
-      },
+    parts.push({
+      key: "practice",
+      title: "Practice",
+      subtitle: "Predict, practice and debug.",
+      nodes: [
+        <ThinkSection key="think" content={content} />,
+        <PracticeSection key="practice" content={content} />,
+        <DebuggingSection key="debugging" content={content} />,
+        content.compiler_activity && <PracticalLab key="lab" content={content} />
+      ].filter(Boolean)
+    });
 
-      {
-        key: "build",
-        title: "Build & Review",
-        subtitle: "Build something, review the concept and move forward.",
-        nodes: [
-          <InterviewSection key="interview" content={content} />,
-          <MiniProjectSection key="project" content={content} />,
-          <LegacySections key="legacy" content={content} />,
-          <GenericExtraSections key="extra" content={content} />
-        ].filter(Boolean)
-      }
-    ];
+    parts.push({
+      key: "challenge",
+      title: "Challenge",
+      subtitle: "Can you solve a problem using what you learned?",
+      nodes: [
+        <ChallengeSection key="challenge" content={content} />,
+        <CommonMistakesSection key="mistakes" content={content} />,
+        <ProgrammerMindset key="mindset" content={content} />,
+        <AiMentorSection key="mentor" content={content} />,
+        content.unseen_challenge && <Section key="unseen" kicker="TEST YOUR UNDERSTANDING" title={text(content.unseen_challenge.title) || "Test Your Understanding"}><p>{text(content.unseen_challenge.task)}</p><RequirementList title="Requirements" value={content.unseen_challenge.requirements} /><RequirementList title="Rules" value={content.unseen_challenge.rules} /></Section>
+      ].filter(Boolean)
+    });
 
-    // Short lessons can naturally have fewer than five parts.
-    return parts.filter((part) => part.nodes.length > 0);
+    parts.push({
+      key: "build",
+      title: "Build & Review",
+      subtitle: "Build something, review the concept and move forward.",
+      nodes: [
+        <MiniProjectSection key="project" content={content} />,
+        <InterviewSection key="interview" content={content} />,
+        <LessonCheck key="check" content={content} />,
+        content.build_now && <Section key="build-now" kicker="BUILD NOW" title={text(content.build_now.title) || "Build It Yourself"}><ObjectSummary value={content.build_now} /></Section>,
+        <NextTopic key="next" content={content} />
+      ].filter(Boolean)
+    });
+
+    return parts;
   }, [content]);
 
+  if (loading) return <div className="lesson-page"><div className="lesson-container"><h2>Loading lesson...</h2></div></div>;
+  if (!lesson) return <div className="lesson-page"><div className="lesson-container"><h2>Lesson not found.</h2></div></div>;
 
-  if (loading) {
-    return <div className="lesson-page"><div className="lesson-container"><h2>Loading lesson...</h2></div></div>;
-  }
-
-  if (!lesson) {
-    return <div className="lesson-page"><div className="lesson-container"><h2>Lesson not found.</h2></div></div>;
-  }
-
-  const totalPages = Math.max(pages.length, 1);
-  const safePage = Math.min(page, totalPages - 1);
+  const totalPages = 5;
+  const safePage = Math.max(0, Math.min(page, totalPages - 1));
   const currentPage = pages[safePage];
 
   const goNextPage = () => {
-    if (safePage < totalPages - 1) setPage((p) => p + 1);
+    if (safePage < 4) setPage((p) => p + 1);
     else if (nextLesson) navigate(`/lesson/${nextLesson.id}`);
   };
 
@@ -746,6 +758,64 @@ function LessonPage() {
 
   return (
     <div className="lesson-page">
+      <style>{`
+        .lesson-stage-nav { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin:18px 0 24px; }
+        .lesson-stage-button { display:inline-flex; align-items:center; gap:8px; padding:9px 13px; border:1px solid #e5e7eb; border-radius:12px; background:#fff; cursor:pointer; font:inherit; color:#374151; transition:.18s ease; }
+        .lesson-stage-button:hover { border-color:#9ca3af; transform:translateY(-1px); }
+        .lesson-stage-button.active { border-color:#2563eb; background:#eff6ff; color:#2563eb; font-weight:700; }
+        .lesson-stage-number { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:#f3f4f6; font-size:12px; font-weight:700; }
+        .lesson-stage-button.active .lesson-stage-number { background:#2563eb; color:#fff; }
+        .lesson-stage-header { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-top:18px; }
+        .lesson-stage-title { display:flex; flex-direction:column; gap:4px; }
+        .lesson-stage-title strong { font-size:20px; }
+        .lesson-stage-title span { color:#6b7280; }
+        .lesson-stage-count { color:#6b7280; font-size:14px; }
+        .lesson-part-progress { height:4px; border-radius:999px; background:#eef2f7; overflow:hidden; margin:10px 0 22px; }
+        .lesson-part-progress-fill { height:100%; background:#2563eb; border-radius:inherit; transition:width .2s ease; }
+        .clean-list { margin:12px 0; padding-left:20px; }
+        .clean-list li { margin:7px 0; }
+        .check-list { display:grid; gap:9px; }
+        .check-item { display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border-radius:10px; background:#f8fafc; }
+        .check-item > span { font-weight:800; color:#2563eb; }
+        .concept-grid,.practice-grid,.mistake-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
+        .concept-card,.practice-card,.mistake-card,.question-card,.analogy-card,.data-card { border:1px solid #e5e7eb; border-radius:14px; padding:16px; background:#fff; }
+        .concept-card h3,.practice-card h3,.mistake-card h3 { margin-top:0; text-transform:capitalize; }
+        .analogy-card { background:#f8fafc; }
+        .lead-text { font-size:17px; line-height:1.65; }
+        .example-stack { display:grid; gap:18px; }
+        .example-card { border:1px solid #e5e7eb; border-radius:16px; padding:18px; background:#fff; }
+        .example-heading { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+        .example-heading h3 { margin:0; }
+        .example-number,.activity-label { font-size:12px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; }
+        .example-purpose { color:#4b5563; }
+        .code-block,.output-block { margin:12px 0; padding:16px; border-radius:12px; overflow:auto; font-size:14px; line-height:1.55; }
+        .code-block { background:#111827; color:#f9fafb; }
+        .output-block { background:#f3f4f6; color:#111827; }
+        .output-area,.explanation-box,.format-box,.interactive-box,.small-example { margin-top:14px; padding:13px; border-radius:12px; background:#f8fafc; }
+        .interactive-box { border:1px solid #e5e7eb; }
+        .interactive-box summary { cursor:pointer; font-weight:700; }
+        .hint-list { display:grid; gap:8px; margin-top:12px; }
+        .hint-item { display:flex; gap:10px; align-items:flex-start; padding:9px 10px; background:#fff; border-radius:9px; }
+        .small-hint { display:flex; gap:8px; margin-top:12px; padding:10px 12px; background:#eff6ff; border-radius:10px; }
+        .step-list { display:grid; gap:10px; }
+        .step-row { display:flex; gap:12px; align-items:flex-start; }
+        .step-row > span { flex:0 0 28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:#eff6ff; color:#2563eb; font-weight:700; }
+        .step-row p { margin:3px 0 0; }
+        .question-list { display:grid; gap:8px; }
+        .question-card { display:flex; gap:12px; align-items:flex-start; }
+        .question-card > span { color:#2563eb; font-weight:800; min-width:26px; }
+        .question-card p { margin:0; }
+        .mentor-levels { display:grid; gap:8px; }
+        .mentor-level { padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; background:#fff; }
+        .mentor-level summary { cursor:pointer; font-weight:700; }
+        .part-outcome { margin-top:24px; padding:15px 16px; border-radius:14px; background:#f8fafc; border:1px solid #e5e7eb; }
+        .part-outcome p { margin:5px 0 0; }
+        .next-topic-card { padding:16px; border-radius:14px; background:#eff6ff; font-weight:700; }
+        .lesson-page-navigation { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:30px; padding-top:18px; border-top:1px solid #e5e7eb; }
+        .lesson-page-navigation span { text-align:center; color:#6b7280; font-size:14px; }
+        @media(max-width:700px){ .lesson-stage-header,.lesson-page-navigation{flex-direction:column;align-items:stretch}.lesson-stage-count{text-align:left}.lesson-page-navigation button{width:100%}.lesson-stage-nav{justify-content:flex-start}.lesson-stage-button{flex:1 1 auto;justify-content:center} }
+      `}</style>
+
       <div className="lesson-container">
         <button className="lesson-back-button" onClick={() => navigate(-1)}>← Back</button>
 
@@ -761,36 +831,51 @@ function LessonPage() {
         <header className="lesson-header">
           <p className="lesson-label">LESSON {currentLessonNumber}</p>
           <h1>{text(content.title) || text(lesson.lesson_title)}</h1>
-          <p className="lesson-intro">
-            {text(content.intro || content.description) || "Start learning C programming from the fundamentals."}
-          </p>
+          <p className="lesson-intro">{text(content.intro || content.description) || "Start learning C programming from the fundamentals."}</p>
           <div className="lesson-meta">
             <span>Difficulty: {text(lesson.difficulty)}</span>
             <span>Duration: {text(content.duration) || text(lesson.estimated_duration)}</span>
           </div>
         </header>
 
-        <div className="lesson-part-indicator">
-          <strong>
-            Part {safePage + 1} of {totalPages}
-          </strong>
-          {currentPage?.title && <span> · {currentPage.title}</span>}
-          {currentPage?.subtitle && (
-            <small>{currentPage.subtitle}</small>
-          )}
+        <div className="lesson-stage-header">
+          <div className="lesson-stage-title">
+            <strong>{currentPage.title}</strong>
+            <span>{currentPage.subtitle}</span>
+          </div>
+        </div>
+
+        <nav className="lesson-stage-nav" aria-label="Lesson stages">
+          {pages.map((part, index) => (
+            <button
+              key={part.key}
+              type="button"
+              className={`lesson-stage-button${index === safePage ? " active" : ""}`}
+              aria-current={index === safePage ? "step" : undefined}
+              onClick={() => setPage(index)}
+            >
+              <span className="lesson-stage-number">{index + 1}</span>
+              <span>{part.title}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="lesson-part-progress" aria-hidden="true">
+          <div className="lesson-part-progress-fill" style={{ width: `${((safePage + 1) / 5) * 100}%` }} />
         </div>
 
         <main className="lesson-content-page">
-          {currentPage?.nodes || <p>No lesson content available.</p>}
+          {currentPage.nodes}
+          <PartOutcome partKey={currentPage.key} />
         </main>
 
-        <div className="lesson-navigation">
-          <button onClick={goPreviousPage} disabled={safePage === 0 && !previousLesson}>← Previous</button>
-          <span>Part {safePage + 1} / {totalPages}</span>
-          <button onClick={goNextPage} disabled={safePage === totalPages - 1 && !nextLesson}>Next →</button>
+        <div className="lesson-page-navigation">
+          <button type="button" onClick={goPreviousPage} disabled={safePage === 0 && !previousLesson}>← Previous</button>
+          <span>{currentPage.title}</span>
+          <button type="button" onClick={goNextPage} disabled={safePage === 4 && !nextLesson}>{safePage === 4 && nextLesson ? "Next Lesson →" : "Next →"}</button>
         </div>
 
-        {safePage === totalPages - 1 && (
+        {safePage === 4 && (
           <div className="lesson-complete-area">
             {completed ? (
               <button disabled className="completed-button">✅ Lesson Completed</button>

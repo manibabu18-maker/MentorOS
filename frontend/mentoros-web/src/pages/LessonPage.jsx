@@ -103,24 +103,33 @@ function Checklist({ value }) {
   );
 }
 
+function formatKey(key) {
+  return String(key)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function ObjectSummary({ value }) {
   if (!isObject(value)) return <>{text(value)}</>;
-  const preferred = ["title", "name", "area", "mistake", "description", "explanation", "example", "task", "problem"];
-  const entries = preferred
-    .filter((key) => hasValue(value[key]))
-    .map((key) => [key, value[key]]);
 
-  if (!entries.length) return <>{JSON.stringify(value)}</>;
+  const entries = Object.entries(value).filter(([, item]) => hasValue(item));
+  if (!entries.length) return null;
 
   return (
     <div className="object-summary">
       {entries.map(([key, item]) => (
-        <p key={key}>
-          {key !== "description" && key !== "explanation" && key !== "example" && key !== "task" && key !== "problem" && (
-            <strong>{key.replace(/_/g, " ")}: </strong>
-          )}
-          {isObject(item) ? <ObjectSummary value={item} /> : Array.isArray(item) ? <BulletList value={item} /> : text(item)}
-        </p>
+        <div className="object-summary-row" key={key}>
+          <strong>{formatKey(key)}</strong>
+          <div className="object-summary-value">
+            {isObject(item) ? (
+              <ObjectSummary value={item} />
+            ) : Array.isArray(item) ? (
+              <BulletList value={item} />
+            ) : (
+              <span>{text(item)}</span>
+            )}
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -128,33 +137,134 @@ function ObjectSummary({ value }) {
 
 function ConceptCards({ value }) {
   if (!hasValue(value)) return null;
-  const cards = [];
 
-  if (Array.isArray(value)) {
-    value.forEach((item) => cards.push(item));
-  } else if (isObject(value)) {
-    Object.entries(value).forEach(([key, item]) => {
-      if (hasValue(item)) cards.push({ title: key.replace(/_/g, " "), value: item });
-    });
-  } else {
-    return <p>{text(value)}</p>;
-  }
+  const cards = Array.isArray(value)
+    ? value.filter((item) => hasValue(item))
+    : isObject(value)
+      ? Object.entries(value)
+          .filter(([, item]) => hasValue(item))
+          .map(([key, item]) => ({ title: key.replace(/_/g, " "), value: item }))
+      : [];
+
+  if (!cards.length) return typeof value === "string" ? <p>{text(value)}</p> : null;
+
+  const renderDetail = (key, item) => {
+    if (!hasValue(item)) return null;
+
+    if (Array.isArray(item)) {
+      return <BulletList value={item} />;
+    }
+
+    if (isObject(item)) {
+      return <ObjectSummary value={item} />;
+    }
+
+    return <p>{text(item)}</p>;
+  };
 
   return (
     <div className="concept-grid">
       {cards.map((item, index) => {
-        if (!isObject(item) || !hasValue(item.value)) {
+        if (!isObject(item)) {
           return (
             <article className="concept-card" key={index}>
-              {isObject(item) ? <ObjectSummary value={item} /> : <p>{text(item)}</p>}
+              <p>{text(item)}</p>
             </article>
           );
         }
 
+        // Array items from Supabase are commonly shaped like:
+        // { type, purpose, operators } or
+        // { title, explanation, example, ... }.
+        // Render those fields directly inside the card instead of
+        // falling back to JSON.stringify().
+        const title = text(
+          item.title || item.name || item.type || item.area || item.heading
+        );
+
+        const description = text(
+          item.explanation || item.description || item.purpose || item.definition
+        );
+
+        const operatorValue = text(item.operators || item.syntax || item.format);
+        const exampleValue = text(item.example || item.code);
+        const noteValue = text(item.important_note || item.note || item.mental_model);
+
+        const reserved = new Set([
+          "title",
+          "name",
+          "type",
+          "area",
+          "heading",
+          "explanation",
+          "description",
+          "purpose",
+          "definition",
+          "operators",
+          "syntax",
+          "format",
+          "example",
+          "code",
+          "important_note",
+          "note",
+          "mental_model",
+          "parts",
+          "points",
+          "examples",
+        ]);
+
+        const extraEntries = Object.entries(item).filter(
+          ([key, entry]) => !reserved.has(key) && hasValue(entry)
+        );
+
         return (
           <article className="concept-card" key={index}>
-            <h3>{text(item.title).replace(/\b\w/g, (c) => c.toUpperCase())}</h3>
-            {Array.isArray(item.value) ? <BulletList value={item.value} /> : isObject(item.value) ? <ObjectSummary value={item.value} /> : <p>{text(item.value)}</p>}
+            {title && <h3>{title.replace(/\b\w/g, (c) => c.toUpperCase())}</h3>}
+
+            {description && <p>{description}</p>}
+
+            {operatorValue && (
+              <div className="operator-list">
+                <strong>Operators:</strong>
+                <code>{operatorValue}</code>
+              </div>
+            )}
+
+            {exampleValue && (
+              <div className="concept-example">
+                <strong>Example</strong>
+                {item.code ? (
+                  <CodeBlock value={item.code} />
+                ) : (
+                  <p>{exampleValue}</p>
+                )}
+              </div>
+            )}
+
+            {Array.isArray(item.parts) && item.parts.length > 0 && (
+              <BulletList value={item.parts} />
+            )}
+
+            {Array.isArray(item.points) && item.points.length > 0 && (
+              <BulletList value={item.points} />
+            )}
+
+            {Array.isArray(item.examples) && item.examples.length > 0 && (
+              <BulletList value={item.examples} />
+            )}
+
+            {noteValue && !item.mental_model && (
+              <div className="key-idea">
+                <strong>Important:</strong> {noteValue}
+              </div>
+            )}
+
+            {extraEntries.map(([key, entry]) => (
+              <div className="generic-detail" key={key}>
+                <h4>{key.replace(/_/g, " ")}</h4>
+                {renderDetail(key, entry)}
+              </div>
+            ))}
           </article>
         );
       })}
@@ -460,12 +570,40 @@ function MiniProjectSection({ content }) {
       <RequirementList title="Skills You Practice" value={p.skills || p.skills_learned} />
       <RequirementList title="Grade Rules" value={p.grade_rules} />
       <RequirementList title="Testing" value={p.testing} />
-      {p.suggested_data && <div className="data-card"><h3>Suggested Data</h3><ObjectSummary value={p.suggested_data} /></div>}
+      {hasValue(p.suggested_data) && (
+        <div className="data-card">
+          <h3>Suggested Data</h3>
+          <DataSummary value={p.suggested_data} />
+        </div>
+      )}
       {hasValue(p.expected_output) && <div className="format-box"><h3>Expected Output</h3><CodeBlock value={p.expected_output} output /></div>}
       <HintDetails hints={p.hints} />
       {hasValue(p.extension) && <p><strong>Try more:</strong> {text(p.extension)}</p>}
       {hasValue(p.next_topic_connection) && <div className="key-idea"><strong>Next lesson:</strong> {text(p.next_topic_connection)}</div>}
     </Section>
+  );
+}
+
+function DataSummary({ value }) {
+  if (!isObject(value)) {
+    if (Array.isArray(value)) return <BulletList value={value} />;
+    return <p>{text(value)}</p>;
+  }
+
+  const entries = Object.entries(value).filter(([, item]) => hasValue(item));
+  if (!entries.length) return null;
+
+  return (
+    <div className="data-summary">
+      {entries.map(([key, item]) => (
+        <div className="data-summary-row" key={key}>
+          <span className="data-summary-label">{formatKey(key)}</span>
+          <span className="data-summary-value">
+            {Array.isArray(item) ? item.join(", ") : isObject(item) ? <DataSummary value={item} /> : text(item)}
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -500,9 +638,12 @@ function PracticalLab({ content }) {
 function LessonCheck({ content }) {
   const data = content.lesson_completion;
   if (!isObject(data)) return null;
+
+  const checklist = data.requirements || data.checklist || data.items;
+
   return (
     <Section kicker="LESSON CHECK" title="Before You Complete This Lesson">
-      <Checklist value={data.requirements} />
+      <Checklist value={checklist} />
       {hasValue(data.completion_message) && <p className="completion-message">{text(data.completion_message)}</p>}
     </Section>
   );
@@ -778,6 +919,15 @@ function LessonPage() {
         .check-item { display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border-radius:10px; background:#f8fafc; }
         .check-item > span { font-weight:800; color:#2563eb; }
         .concept-grid,.practice-grid,.mistake-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
+.object-summary { display:grid; gap:8px; }
+.object-summary-row { display:grid; grid-template-columns:minmax(120px, 170px) 1fr; gap:10px; align-items:start; padding:8px 0; border-bottom:1px solid #eef2f7; }
+.object-summary-row:last-child { border-bottom:0; }
+.object-summary-value { min-width:0; }
+.data-summary { display:grid; gap:8px; }
+.data-summary-row { display:grid; grid-template-columns:minmax(130px, 180px) 1fr; gap:12px; padding:10px 0; border-bottom:1px solid #eef2f7; }
+.data-summary-row:last-child { border-bottom:0; }
+.data-summary-label { font-weight:700; color:#374151; }
+.data-summary-value { color:#111827; word-break:break-word; }
         .concept-card,.practice-card,.mistake-card,.question-card,.analogy-card,.data-card { border:1px solid #e5e7eb; border-radius:14px; padding:16px; background:#fff; }
         .concept-card h3,.practice-card h3,.mistake-card h3 { margin-top:0; text-transform:capitalize; }
         .analogy-card { background:#f8fafc; }

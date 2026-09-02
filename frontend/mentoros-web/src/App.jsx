@@ -13,6 +13,10 @@ import LessonDetails from "./pages/LessonDetails";
 import LessonPage from "./pages/LessonPage";
 import PythonLesson from "./pages/PythonLesson";
 
+import CapstoneProjects from "./pages/CapstoneProjects";
+import CapstoneProjectDetails from "./pages/CapstoneProjectDetails";
+import CapstoneProjectWorkspace from "./pages/CapstoneProjectWorkspace";
+
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 
@@ -42,8 +46,22 @@ function App() {
         <Route path="/lessons/:moduleId" element={<LessonDetails />} />
         <Route path="/lesson/:lessonId" element={<LessonPage />} />
 
-        {/* Python Course */}
+        {/* Python */}
         <Route path="/python" element={<PythonLesson />} />
+
+        {/* C Capstone Project Lab */}
+        <Route path="/capstone" element={<CapstoneProjects />} />
+
+        <Route
+          path="/capstone/:projectId"
+          element={<CapstoneProjectDetails />}
+        />
+
+        {/* C Capstone Project Workspace */}
+        <Route
+          path="/capstone/:projectId/workspace"
+          element={<CapstoneProjectWorkspace />}
+        />
       </Routes>
 
       <Footer />

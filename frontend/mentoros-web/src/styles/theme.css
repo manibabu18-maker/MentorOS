@@ -1,0 +1,43 @@
+:root{
+  /* Main Colors */
+  --primary:#0F172A;
+  --accent:#2563EB;
+  --bg:#F8FAFC;
+  --surface:#FFFFFF;
+
+  /* Semantic */
+  --success:#16A34A;
+  --warning:#F59E0B;
+  --error:#DC2626;
+  --ai:#7C3AED;
+
+  /* Text */
+  --text:#111827;
+  --text-light:#64748B;
+
+  /* Border & Shadow */
+  --border:#E5E7EB;
+  --shadow:0 8px 24px rgba(15,23,42,.08);
+
+  /* Radius */
+  --radius:16px;
+}
+
+/* RESET */
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+html,body,#root{
+  width:100%;
+  min-height:100%;
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:Inter,system-ui,sans-serif;
+}

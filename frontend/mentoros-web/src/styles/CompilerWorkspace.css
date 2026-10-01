@@ -1,0 +1,73 @@
+.compiler-page{
+  max-width:1400px;
+  margin:auto;
+  padding:24px;
+}
+
+.compiler-layout{
+  display:grid;
+  grid-template-columns:2fr 1fr;
+  gap:20px;
+}
+
+.problem-panel,
+.editor-panel,
+.test-panel,
+.output-panel{
+  background:#fff;
+  border:1px solid #e5e7eb;
+  border-radius:16px;
+  padding:18px;
+}
+
+.editor-panel{
+  margin-top:20px;
+}
+
+.code-editor{
+  width:100%;
+  height:320px;
+  background:#111827;
+  color:#f9fafb;
+  font-family:monospace;
+  font-size:15px;
+  border:none;
+  border-radius:12px;
+  padding:16px;
+  resize:none;
+}
+
+.action-buttons{
+  display:flex;
+  gap:10px;
+  margin-top:15px;
+}
+
+.run-btn{background:#2563eb;color:white;}
+.submit-btn{background:#16a34a;color:white;}
+.hint-btn{background:#7c3aed;color:white;}
+
+.action-buttons button{
+  border:none;
+  padding:10px 18px;
+  border-radius:10px;
+  cursor:pointer;
+}
+
+.right-panel{
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+
+.sample-box{
+  background:#f3f4f6;
+  padding:12px;
+  border-radius:10px;
+}
+
+@media(max-width:900px){
+  .compiler-layout{
+    grid-template-columns:1fr;
+  }
+}

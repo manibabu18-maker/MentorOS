@@ -1,23 +1,51 @@
 import "../styles/CourseCard.css";
+
 function CourseCard({
   title,
   duration,
   level,
+  rating,
   students,
-  rating
+  onClick,
 }) {
+
+  const getEmoji = () => {
+    const name = title.toLowerCase();
+
+    if (name.includes("python")) return "🐍";
+    if (name.includes("sql")) return "🗄️";
+    if (name.includes("embedded")) return "🔧";
+    if (name.includes("ai")) return "🤖";
+    if (name.includes("c")) return "💻";
+
+    return "📘";
+  };
+
   return (
-    <div className="course-card">
-      <h2>{title}</h2>
+    <div className="course-card" onClick={onClick}>
 
-      <p>Duration: {duration}</p>
-      <p>⭐ {rating}</p>
+      <div className="course-banner">
+        <span>{getEmoji()}</span>
+      </div>
 
-<p>👨‍🎓 {students}</p>
+      <div className="course-content">
 
-<p>📚 {level}</p>
+        <h2>{title}</h2>
 
-      <button>Enroll Now</button>
+        <div className="course-meta">
+          <span>⏱ {duration}</span>
+          <span>📚 {level}</span>
+        </div>
+
+        <div className="course-bottom">
+          <span>⭐ {rating}</span>
+          <span>👨‍🎓 {students}</span>
+        </div>
+
+        <button>Start Learning →</button>
+
+      </div>
+
     </div>
   );
 }

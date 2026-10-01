@@ -1,0 +1,170 @@
+/* ========================================
+   MENTOROS AUTH UI
+======================================== */
+
+.auth-page{
+  min-height:calc(100vh - 80px);
+  display:grid;
+  place-items:center;
+  padding:48px 20px;
+  background:var(--bg);
+}
+
+.auth-container{
+  width:100%;
+  max-width:1100px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  background:var(--surface);
+  border-radius:24px;
+  overflow:hidden;
+  border:1px solid var(--border);
+  box-shadow:var(--shadow);
+}
+
+/* LEFT PANEL */
+
+.auth-left{
+  background:linear-gradient(180deg,#0F172A 0%,#172554 100%);
+  color:white;
+  padding:56px 42px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+
+.auth-left h2{
+  font-size:42px;
+  color:#FFFFFF;
+  margin:0 0 8px;
+}
+
+.brand-subtitle{
+  color:#94A3B8;
+  font-size:15px;
+  margin-bottom:48px;
+}
+
+.brand-content h3{
+  font-size:32px;
+  color:white;
+  margin-bottom:18px;
+  line-height:1.3;
+}
+
+.brand-content p{
+  color:#CBD5E1;
+  font-size:17px;
+  line-height:1.8;
+}
+
+/* RIGHT PANEL */
+
+.auth-right{
+  padding:52px 42px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+
+.auth-title{
+  font-size:42px;
+  color:var(--text);
+  margin-bottom:8px;
+}
+
+.auth-subtitle{
+  color:var(--text-light);
+  font-size:16px;
+  margin-bottom:32px;
+}
+
+/* FORM */
+
+.auth-form{
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+
+.auth-form label{
+  display:block;
+  margin-bottom:8px;
+  font-size:14px;
+  font-weight:600;
+  color:var(--text);
+}
+
+.auth-form .input{
+  width:100%;
+}
+
+.auth-button,
+.btn-primary{
+  width:100%;
+  margin-top:8px;
+  padding:14px;
+  font-size:16px;
+}
+
+/* MESSAGE */
+
+.auth-message{
+  min-height:22px;
+  margin-top:18px;
+  font-size:14px;
+  text-align:center;
+}
+
+.success-message{
+  color:var(--success);
+}
+
+.error-message{
+  color:var(--error);
+}
+
+/* FOOTER */
+
+.auth-footer{
+  margin-top:20px;
+  text-align:center;
+  color:var(--text-light);
+}
+
+.auth-footer a{
+  color:var(--accent);
+  text-decoration:none;
+  font-weight:600;
+}
+
+.auth-footer a:hover{
+  text-decoration:underline;
+}
+
+/* MOBILE */
+
+@media (max-width:900px){
+
+  .auth-container{
+    grid-template-columns:1fr;
+  }
+
+  .auth-left{
+    display:none;
+  }
+
+  .auth-right{
+    padding:36px 24px;
+  }
+
+  .auth-title{
+    font-size:34px;
+    text-align:center;
+  }
+
+  .auth-subtitle{
+    text-align:center;
+  }
+
+}

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import "../styles/Auth.css";
+
 function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -8,84 +10,122 @@ function Signup() {
   const [message, setMessage] = useState("");
 
   const handleSignup = async (event) => {
-  event.preventDefault();
+    event.preventDefault();
 
-  if (name === "" || email === "" || password === "") {
-    setMessage("Please fill all fields");
-  } else if (!email.includes("@")) {
-    setMessage("Please enter a valid email");
-  } else if (password.length < 6) {
-    setMessage("Password must be at least 6 characters");
-  } else {
-    const { data, error } = await supabase.auth.signUp({
-      email: email,
-      password: password,
+    if (name === "" || email === "" || password === "") {
+      setMessage("Please fill all fields");
+      return;
+    }
+
+    if (!email.includes("@")) {
+      setMessage("Please enter a valid email");
+      return;
+    }
+
+    if (password.length < 6) {
+      setMessage("Password must be at least 6 characters");
+      return;
+    }
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
       options: {
         data: {
-          name: name,
+          name,
         },
       },
     });
 
     if (error) {
       setMessage(error.message);
-    } else {
-      setMessage("Account created successfully");
-      console.log(data);
+      return;
     }
-  }
-};
+
+    setMessage("Account created successfully");
+  };
 
   return (
-    <section className="login-page">
-      <div className="login-card">
-        <h1>Create Account</h1>
+    <section className="auth-page">
+      <div className="auth-container">
 
-        <p>Start your personalized learning journey</p>
+        <div className="auth-left">
+          <h2>🚀 MentorOS</h2>
+          <p className="brand-subtitle">Engineering Learning OS</p>
 
-        <form onSubmit={handleSignup}>
-          <label>Name</label>
+          <div className="brand-content">
+            <h3>Start Your Career Today</h3>
+            <p>
+              Join thousands of learners building coding and engineering skills.
+            </p>
+          </div>
+        </div>
 
-          <input
-            type="text"
-            placeholder="Enter your name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
+        <div className="auth-right">
+          <h1 className="auth-title">Create Account</h1>
 
-          <label>Email</label>
+          <p className="auth-subtitle">
+            Start your personalized learning journey
+          </p>
 
-          <input
-            type="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
+          <form className="auth-form" onSubmit={handleSignup}>
 
-          <label>Password</label>
+            <div>
+              <label>Full Name</label>
+              <input
+                className="input"
+                type="text"
+                placeholder="Enter your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
 
-          <input
-            type="password"
-            placeholder="Create a password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
+            <div>
+              <label>Email Address</label>
+              <input
+                className="input"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
 
-          <button type="submit">Create Account</button>
-        </form>
+            <div>
+              <label>Password</label>
+              <input
+                className="input"
+                type="password"
+                placeholder="Create a password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
 
-        <p
-          className={
-            message === "Account created successfully"
-              ? "success-message"
-              : "error-message"
-          }
-        >
-          {message}
-        </p>
-       <p className="signup-text">
-  Already have an account? <Link to="/login">Login</Link>
-</p> 
+            <button className="btn-primary auth-button" type="submit">
+              Create Account
+            </button>
+
+          </form>
+
+          <p
+            className={`auth-message ${
+              message === "Account created successfully"
+                ? "success-message"
+                : "error-message"
+            }`}
+          >
+            {message}
+          </p>
+
+          <p className="auth-footer">
+            Already have an account?{" "}
+            <Link to="/login">Login</Link>
+          </p>
+
+        </div>
+
       </div>
     </section>
   );

@@ -1,0 +1,187 @@
+/* =========================================
+   MENTOROS - COMMON UI COMPONENTS
+   Global reusable styles
+========================================= */
+
+/* ===========================
+   PAGE CONTAINER
+=========================== */
+
+.page-container{
+  max-width:1200px;
+  margin:0 auto;
+  padding:32px 24px;
+  width:100%;
+  box-sizing:border-box;
+}
+
+/* ===========================
+   CARD
+=========================== */
+
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  box-shadow:var(--shadow);
+  padding:20px;
+}
+
+/* ===========================
+   PRIMARY BUTTON
+=========================== */
+
+.btn-primary{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+
+  background:var(--accent);
+  color:#fff;
+
+  border:none;
+  border-radius:12px;
+
+  padding:12px 20px;
+
+  font-size:15px;
+  font-weight:600;
+
+  cursor:pointer;
+  transition:all .2s ease;
+}
+
+.btn-primary:hover{
+  transform:translateY(-2px);
+  filter:brightness(.95);
+}
+
+/* ===========================
+   SECONDARY BUTTON
+=========================== */
+
+.btn-secondary{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+
+  background:var(--surface);
+  color:var(--primary);
+
+  border:1px solid var(--border);
+  border-radius:12px;
+
+  padding:12px 20px;
+
+  font-size:15px;
+  font-weight:600;
+
+  cursor:pointer;
+  transition:all .2s ease;
+}
+
+.btn-secondary:hover{
+  background:#F3F4F6;
+}
+
+/* ===========================
+   INPUT FIELD
+=========================== */
+
+.input{
+  width:100%;
+
+  padding:12px 14px;
+
+  background:var(--surface);
+  color:var(--text);
+
+  border:1px solid var(--border);
+  border-radius:12px;
+
+  font-size:15px;
+  outline:none;
+
+  transition:.2s ease;
+}
+
+.input::placeholder{
+  color:#9CA3AF;
+}
+
+.input:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(37,99,235,.15);
+}
+
+/* ===========================
+   BADGE
+=========================== */
+
+.badge{
+  display:inline-flex;
+  align-items:center;
+
+  padding:6px 12px;
+
+  background:#DBEAFE;
+  color:var(--accent);
+
+  border-radius:999px;
+
+  font-size:13px;
+  font-weight:600;
+}
+
+/* ===========================
+   SECTION TITLE
+=========================== */
+
+.section-title{
+  color:var(--text);
+  font-size:36px;
+  font-weight:700;
+  margin-bottom:24px;
+}
+
+/* ===========================
+   TEXT
+=========================== */
+
+.text-muted{
+  color:var(--text-light);
+  line-height:1.6;
+}
+
+/* ===========================
+   FLEX HELPERS
+=========================== */
+
+.flex-between{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.flex-center{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* ===========================
+   RESPONSIVE
+=========================== */
+
+@media (max-width:768px){
+
+  .page-container{
+    padding:20px 16px;
+  }
+
+  .section-title{
+    font-size:28px;
+  }
+
+}
